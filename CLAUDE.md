@@ -25,7 +25,7 @@ art is made.
 8. Remind the user to git commit after every working step.
 
 ## Build order (check the box when a step is tested & working)
-- [ ] 0. Project + folders + .gitignore + this file
+- [x] 0. Project + folders + .gitignore + this file
 - [ ] 1. Player movement (grey capsule)
 - [ ] 2. SeedCore ScriptableObjects (Growth/Heat/Wind)
 - [ ] 3. Planting (grey growing cylinder)
@@ -38,10 +38,14 @@ art is made.
 - [ ] 9. Polish / sound / branch-sprout reward
 
 ## Current State
-Nothing built yet. Project just initialized.
+Step 0 complete: folders, .gitignore, CLAUDE.md, initial commit, and push
+to GitHub (private repo, origin set) all done. Nothing else built yet.
 
 ## Last Session
-2026-07-17 — Project initialized, memory file created.
+2026-07-17 — Repo initialized with official Unity .gitignore, first
+commit made, pushed to GitHub origin. Retired BUILD_LOG.md — CLAUDE.md
+is now the single memory file; this "Last Session" section is the log
+going forward.
 
 ## Known issues / TODO
 (none yet)
