@@ -1,11 +1,37 @@
 # Seedfall — Project Memory
 
 ## What this project is
-A grey-box-first MVP for a game called Seedfall: a Zelda-style, funky 
-low-poly game where you graft "Seed-Cores" (Growth / Heat / Wind) to 
-grow plants with emergent behavior, earn Sap, and fend off spreading 
-Corruption. Goal of the MVP: prove the grafting loop is fun BEFORE any 
-art is made.
+Seedfall: a Zelda-style, funky low-poly game. The player revives a dying 
+world centered on a wounded World Tree. Core mechanic: grafting two 
+Seed-Cores (Growth/Heat/Wind to start) grows a WEAPON, which the player 
+harvests and takes on an EXPEDITION into a dangerous sector. The weapon 
+wilts at the end of the expedition (not mid-combat, not from per-swing 
+durability) and drops seeds back — sometimes mutated/improved. This 
+closes the resource loop: grow → expedition → wilt → seeds return → 
+grow again.
+
+The player starts with NOTHING but bare-hand melee combat — no starting 
+gift, no menu handout. The first Seed-Cores are found by exploring the 
+starting green zone, lying in the world.
+
+Corrupted creatures can be healed instead of killed. Healing has a small 
+percentage chance to drop a seed. (Whether healed creatures become 
+active allies is a promising direction, not yet finalized as MVP scope.)
+
+The resource limit is PLOTS (how many things can grow at once in the 
+player's green zone), not seed scarcity — seeds should be reasonably 
+easy to find/earn so experimentation is never punished. Plot count is 
+a base-building progression axis.
+
+MVP goal: prototype ONLY the grafting/weapon/expedition loop with 3 
+cores, a handful of weapon forms, dumb simple enemies, one small test 
+arena, and one small farm/plot area. Test whether the core loop is fun 
+BEFORE building sectors, story, base building, or defense systems. Grey 
+boxes only — no art yet.
+
+Explicitly CUT from MVP (roadmap only, do not build yet): 6-sector map, 
+World Tree story/mystery content, escalating defense/source entity, 
+unlimited base building, ally AI, hunting/cooking/traversal tools.
 
 ## Hard rules (never break)
 1. Unity version is 6000.5.4f1. Never upgrade. Never change Project 
@@ -25,27 +51,28 @@ art is made.
 8. Remind the user to git commit after every working step.
 
 ## Build order (check the box when a step is tested & working)
-- [x] 0. Project + folders + .gitignore + this file
-- [ ] 1. Player movement (grey capsule)
-- [ ] 2. SeedCore ScriptableObjects (Growth/Heat/Wind)
-- [ ] 3. Planting (grey growing cylinder)
-- [ ] 4. Grafting system (the make-or-break test)
-- [ ] 5. Sap resource + buy loop
-- [ ] 6. Corruption threat
-- [ ] --- FUN GATE: prove grey-box game is fun before art ---
-- [ ] 7. Blender low-poly models (Python-generated)
-- [ ] 8. Cel-shaded URP materials
-- [ ] 9. Polish / sound / branch-sprout reward
+- [x] 0. Setup / Git / memory file
+- [ ] 1. Player movement + bare-hand melee (grey capsule, fists work)
+- [ ] 2. SeedCore data (Growth/Heat/Wind) + findable seed pickups in world
+- [ ] 3. Planting in a small plot area (limited plot count, not scarcity)
+- [ ] 4. Grafting system → produces a weapon (not just a seed/plant)
+- [ ] 5. Weapon pickup, equip, and swing (replacing bare hands)
+- [ ] 6. Expedition structure: leave plot area, weapon active in a test 
+      arena, weapon wilts at expedition end and drops seeds
+- [ ] 7. Dumb simple enemies in the test arena to fight (or heal, small 
+      chance of seed drop)
+- [ ] --- FUN GATE: is grow+graft+expedition+wilt actually fun? ---
+- [ ] 8. (post-MVP) Sectors, story, base depth, defense, allies
 
 ## Current State
 Step 0 complete: folders, .gitignore, CLAUDE.md, initial commit, and push
 to GitHub (private repo, origin set) all done. Nothing else built yet.
 
 ## Last Session
-2026-07-17 — Repo initialized with official Unity .gitignore, first
-commit made, pushed to GitHub origin. Retired BUILD_LOG.md — CLAUDE.md
-is now the single memory file; this "Last Session" section is the log
-going forward.
+2026-07-18 — Design corrected after external review (ChatGPT + Kimi
+critiques): replaced mid-combat weapon durability with per-expedition
+wilting, added hands-first start, added plots-based resource limit,
+added healing-seed-drop chance.
 
 ## Known issues / TODO
 (none yet)
