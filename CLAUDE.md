@@ -219,8 +219,8 @@ these placeholder cylinders as a straight swap, no code changes needed.
 Color tinting by core type (green/orange/cyan) still applied to both
 stage objects at plant time.
 
-PLANTING/HARVEST REWORK, done, compiled, committed -- NOT yet
-confirmed via a Play-mode test. PlantPlot now plants SeedData (found
+PLANTING/HARVEST REWORK, done, compiled, committed, and confirmed
+working by the user via Play-mode test. PlantPlot now plants SeedData (found
 seeds), not SeedCoreData (cores only come from Rock/Break-Seed now,
 never planted directly). Field/property renamed _plantedCore/
 PlantedCore -> _plantedSeed/PlantedSeed; TryPlant(SeedCoreData, ...)
@@ -237,11 +237,10 @@ first (priority), else plant _inventory.Seeds[0] into the nearest
 unoccupied plot. growTimeSeconds/stageSmall/stageGrown/
 stageSwitchThreshold and their Inspector wiring on the 3 Plot objects
 were untouched by this change, per the hard boundary it was built
-under. Test not yet run: plant a seed (E near empty plot), wait
-growTimeSeconds, confirm "Plot matured: [name]" log + grown stage
-visible, press E again on the same plot, confirm "Harvested 1 [Type]
-Sap" log + I-key sap count increments + plot returns to fully empty
-(both stages hidden, replantable immediately).
+under. Confirmed working end to end: plant (E near empty plot) ->
+grow -> "Plot matured" log + grown stage -> harvest (E again on same
+plot) -> "Harvested 1 [Type] Sap" log + sap count up (I key) -> plot
+back to fully empty and immediately replantable.
 
 SampleScene hierarchy now follows Unity Organization Standards: 4 root
 folders -- PLAYER -- (Player, Main Camera), -- WORLD -- (Test_MeleeTarget,
@@ -291,7 +290,7 @@ above (planting now uses SeedData not SeedCoreData; added
 TryHarvest/sapYield/HasMatured). This landed as uncommitted working-
 tree changes from a prior context window; picked back up this session
 via `git status`/`git diff` rather than session memory, committed, and
-pushed. Not yet Play-tested by the user.
+pushed. Confirmed working by the user via Play-mode test.
 - If a newly-written script's type can't be resolved (CS0246 in a file
   that references it, even though the referenced file itself shows no
   error), don't just keep re-importing it — check whether it's actually
