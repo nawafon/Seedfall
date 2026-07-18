@@ -143,6 +143,20 @@ melee, mouse-orbit camera (Step 1). SeedCoreData ScriptableObject
 (E key, plants first inventory core into nearest unoccupied plot) + 3
 Plot_01/02/03 GameObjects (Step 3).
 
+Step 4a done and confirmed (grafting LOGIC only -- no UI, no inventory
+hookup yet, that's still to come before Step 4 as a whole is done):
+Assets/_Seedfall/Scripts/Weapons/ has WeaponGimmick.cs (enum),
+WeaponData.cs (ScriptableObject: name/damage/range/cooldown/gimmick/
+placeholderPrefab), GraftRecipe.cs (coreA/coreB/result + order-
+independent Matches()), GraftingSystem.cs (List<GraftRecipe>,
+TryGraft(a,b) returns matching WeaponData or null + logs "No recipe
+found"). 3 WeaponData + 3 GraftRecipe assets in
+ScriptableObjects/Weapons/ (Thornblaze/Windbriar/Cindergale).
+GraftTestDebug.cs is TEMPORARY test scaffolding (marked with a "//
+TEMP" comment) on GraftTestRig (under -- TESTING --) -- delete both
+the script and the GameObject once Step 4 is fully done and no longer
+needs manual key-press testing.
+
 PlantPlot growth is plain progress data (_growProgress float, 0-1)
 driven by a coroutine -- NOT a scaled transform. Each plot has two
 pre-placed, initially-inactive child objects, Stage_Small and
@@ -169,16 +183,21 @@ PlantPlot's growth from a scaled placeholder to plain progress data +
 a coroutine swapping two pre-placed Stage_Small/Stage_Grown children,
 confirmed working. Added Hard Rule 9 (scripts first, confirm zero
 compile errors via MCP console query, only then do MCP scene setup).
+Built and confirmed working Step 4a: grafting logic (WeaponGimmick,
+WeaponData, GraftRecipe, GraftingSystem, temp GraftTestDebug), 6
+ScriptableObject assets, and a GraftTestRig test rig wired via MCP.
+Following Rule 9 this time worked cleanly -- all 5 new scripts compiled
+on the first try with no repeat of the earlier desync issue.
 
-Hit a real AssetDatabase/CompilationPipeline desync: a freshly-written
-.cs file can be recognized as an imported MonoScript asset yet never
-actually enter Assembly-CSharp's compiled source list, even after
-repeated Unity_ManageAsset "Import" calls, AssetDatabase.Refresh, and
-Editor focus — the fix was deleting the file + its .meta entirely and
-recreating both from scratch. Also discovered the scene was NOT being
-autosaved by any of the MCP GameObject/component edits — a full
-Hierarchy reorg sat unsaved in memory until an explicit
-Unity_ManageScene Save call.
+Hit a real AssetDatabase/CompilationPipeline desync (Step 3): a
+freshly-written .cs file can be recognized as an imported MonoScript
+asset yet never actually enter Assembly-CSharp's compiled source list,
+even after repeated Unity_ManageAsset "Import" calls,
+AssetDatabase.Refresh, and Editor focus — the fix was deleting the
+file + its .meta entirely and recreating both from scratch. Also
+discovered the scene was NOT being autosaved by any of the MCP
+GameObject/component edits — a full Hierarchy reorg sat unsaved in
+memory until an explicit Unity_ManageScene Save call.
 
 ## Known issues / TODO
 - If a newly-written script's type can't be resolved (CS0246 in a file
@@ -201,5 +220,15 @@ Unity_ManageScene Save call.
   -- use `search_method: "by_path"` with the full hierarchy path.
 - `set_component_property` cannot assign GameObject-typed fields (only
   asset references, e.g. ScriptableObjects, work via a plain asset path
-  string). For wiring scene-object references, use Unity_RunCommand
-  with `SerializedObject`/`objectReferenceValue` instead.
+  string). For wiring scene-object or component references, use
+  Unity_RunCommand with `SerializedObject`/`objectReferenceValue`
+  instead. Note: a List<> of asset references (e.g.
+  List<GraftRecipe>) DOES work fine via set_component_property as an
+  array of asset path strings -- the limitation is specifically
+  scene-object/component references, not lists in general.
+- The MCP connection can drop mid-task ("Connection revoked") during
+  or after compile-heavy operations, with no apparent pattern. Recovery
+  is always the same: user re-approves in Project Settings > AI > Unity
+  MCP, then check GetState. Before retrying whatever failed, verify
+  nothing partial was created (e.g. via Glob on the expected output
+  path) rather than assuming a clean slate or assuming it fully ran.
