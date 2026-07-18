@@ -23,6 +23,14 @@ namespace Seedfall.Player
 
         private void Update()
         {
+            // Every menu (GraftMenuUI, BreakSeedMenuUI) unlocks the cursor while open --
+            // same signal MouseOrbitCamera uses to freeze. Without this the player could
+            // walk around blindly while a menu is open and the camera is frozen.
+            if (Cursor.lockState != CursorLockMode.Locked)
+            {
+                return;
+            }
+
             float horizontal = Input.GetAxis("Horizontal");
             float vertical = Input.GetAxis("Vertical");
 

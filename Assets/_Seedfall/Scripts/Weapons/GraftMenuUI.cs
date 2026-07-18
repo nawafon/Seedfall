@@ -47,7 +47,16 @@ namespace Seedfall.Weapons
         {
             if (Input.GetKeyDown(KeyCode.Tab))
             {
-                bool isOpening = !menuRoot.activeSelf;
+                bool wasActive = menuRoot.activeSelf;
+
+                // If some OTHER menu is open (cursor already unlocked, but not by us),
+                // don't also open this one on top of it -- only one menu at a time.
+                if (!wasActive && Cursor.lockState != CursorLockMode.Locked)
+                {
+                    return;
+                }
+
+                bool isOpening = !wasActive;
                 menuRoot.SetActive(isOpening);
 
                 // MouseOrbitCamera locks/hides the cursor for mouse-look by default -- the

@@ -41,6 +41,14 @@ namespace Seedfall.Player
                 return;
             }
 
+            // Every menu (GraftMenuUI, BreakSeedMenuUI) unlocks the cursor while open --
+            // use that as the "a menu is open" signal so the camera doesn't spin around
+            // while the player is trying to click UI with the mouse.
+            if (Cursor.lockState != CursorLockMode.Locked)
+            {
+                return;
+            }
+
             _yaw += Input.GetAxis("Mouse X") * mouseSensitivity;
             _pitch -= Input.GetAxis("Mouse Y") * mouseSensitivity;
             _pitch = Mathf.Clamp(_pitch, minPitch, maxPitch);

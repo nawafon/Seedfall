@@ -58,6 +58,13 @@ namespace Seedfall.Tools
 
         public void Open()
         {
+            // If some OTHER menu is open (cursor already unlocked), don't also open this
+            // one on top of it -- only one menu at a time.
+            if (Cursor.lockState != CursorLockMode.Locked)
+            {
+                return;
+            }
+
             if (playerInventory.GetRockUses() <= 0)
             {
                 Debug.Log("You need a rock to break seeds.");

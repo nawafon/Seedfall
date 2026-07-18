@@ -4,8 +4,9 @@ using Seedfall.Player;
 
 namespace Seedfall.Plants
 {
-    // A single plantable plot/slot in the world. Handles planting and the visual
-    // growth-over-time progress only -- no weapon/harvest logic yet (that's Step 4).
+    // A single plantable plot/slot in the world. Plants SeedData (found seeds), not
+    // SeedCoreData (graft-ready cores now only come from Rock/Break-Seed). Harvesting a
+    // matured plot yields Sap and empties the plot back out for replanting.
     // Growth is plain progress data (0..1) driving a swap between two pre-placed
     // placeholder children (Stage_Small / Stage_Grown) via SetActive -- not a scaled
     // object -- so real small/grown models can later be swapped in on those same
@@ -18,16 +19,18 @@ namespace Seedfall.Plants
         [SerializeField] private GameObject stageGrown;
         [Range(0f, 1f)]
         [SerializeField] private float stageSwitchThreshold = 0.5f;
+        [SerializeField] private int sapYield = 1;
 
         private bool _isOccupied;
-        private SeedCoreData _plantedCore;
+        private SeedData _plantedSeed;
         private float _growProgress; // 0..1, plain data -- not tied to any transform
         private bool _hasMatured;
         private bool _hasSwitchedStage;
 
         public bool IsOccupied => _isOccupied;
-        public SeedCoreData PlantedCore => _plantedCore;
+        public SeedData PlantedSeed => _plantedSeed;
         public float GrowProgress => _growProgress;
+        public bool HasMatured => _hasMatured;
 
         private void Reset()
         {
@@ -44,27 +47,48 @@ namespace Seedfall.Plants
             SetActiveStages(smallActive: false, grownActive: false);
         }
 
-        public bool TryPlant(SeedCoreData core, PlayerSeedInventory inventory)
+        public bool TryPlant(SeedData seed, PlayerSeedInventory inventory)
         {
-            if (_isOccupied || core == null || inventory == null)
+            if (_isOccupied || seed == null || inventory == null)
             {
                 return false;
             }
 
-            if (!inventory.RemoveSeedCore(core))
+            if (!inventory.RemoveSeed(seed))
             {
                 return false;
             }
 
             _isOccupied = true;
-            _plantedCore = core;
+            _plantedSeed = seed;
             _growProgress = 0f;
             _hasMatured = false;
             _hasSwitchedStage = false;
 
-            TintStages(core);
+            TintStages(seed);
             SetActiveStages(smallActive: true, grownActive: false);
             StartCoroutine(GrowRoutine());
+            return true;
+        }
+
+        public bool TryHarvest(PlayerSeedInventory inventory)
+        {
+            if (!_isOccupied || !_hasMatured || inventory == null)
+            {
+                return false;
+            }
+
+            SeedCoreType harvestedType = _plantedSeed.SeedType;
+            inventory.AddSap(harvestedType, sapYield);
+            Debug.Log($"Harvested {sapYield} {harvestedType} Sap");
+
+            // Reset plot to empty, ready to replant.
+            _isOccupied = false;
+            _plantedSeed = null;
+            _growProgress = 0f;
+            _hasMatured = false;
+            _hasSwitchedStage = false;
+            SetActiveStages(smallActive: false, grownActive: false);
             return true;
         }
 
@@ -84,7 +108,7 @@ namespace Seedfall.Plants
             }
 
             _hasMatured = true;
-            Debug.Log($"Plot matured: {_plantedCore.CoreName}");
+            Debug.Log($"Plot matured: {_plantedSeed.DisplayName}");
         }
 
         private void SetActiveStages(bool smallActive, bool grownActive)
@@ -99,9 +123,9 @@ namespace Seedfall.Plants
             }
         }
 
-        private void TintStages(SeedCoreData core)
+        private void TintStages(SeedData seed)
         {
-            Color color = GetColorForCoreType(core.CoreType);
+            Color color = GetColorForCoreType(seed.SeedType);
             TintRenderer(stageSmall, color);
             TintRenderer(stageGrown, color);
         }

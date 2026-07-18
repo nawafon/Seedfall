@@ -192,9 +192,22 @@ GraftMenu Canvas (no duplicate Canvas/EventSystem).
 
 Confirmed working functionally (rock pickup -> R menu -> break seed ->
 core gained, rock uses decrement correctly, "out of rock uses" and
-"don't have that seed" paths both correct). A UI bug was found during
-testing and explicitly deferred by the user -- not yet diagnosed. See
-Known issues.
+"don't have that seed" paths both correct).
+
+Found and fixed 3 real bugs from that deferred UI report: (1)
+GraftMenuUI and BreakSeedMenuUI could both be open simultaneously with
+no mutual exclusion -- likely the actual cause of the earlier "Graft
+menu doesn't close" report (it probably DID close, just invisibly,
+because the other menu was still covering the screen); (2) the player
+character could still move via WASD while a menu was open even though
+the camera was frozen; (3) (user request, not a bug) the camera didn't
+freeze at all originally when a menu opened -- fixed by having
+MouseOrbitCamera skip all mouse-look/repositioning while
+Cursor.lockState isn't Locked. All three now share that one signal:
+every menu unlocks the cursor on open and locks it on close, and both
+PlayerController and MouseOrbitCamera check that same lockState to
+freeze, and each menu's Open() checks it too to refuse opening on top
+of another menu. Confirmed working by user.
 
 PlantPlot growth is plain progress data (_growProgress float, 0-1)
 driven by a coroutine -- NOT a scaled transform. Each plot has two
@@ -238,8 +251,16 @@ visible current-selection Label, and a completely separate template
 buried in Template/Viewport/Content/Item/Item Label used for the
 popup's option rows -- fixing only the first one left the dropdown's
 open-list text tiny and illegible even though everything else looked
-correctly sized. User found a further UI bug during retest but asked
-to defer it undiagnosed for now.
+correctly sized.
+
+Diagnosed and fixed the deferred bug plus two more found alongside it:
+Graft and Break Seed menus had no mutual exclusion (both could be open
+at once -- likely the real cause of the earlier "doesn't close"
+report), the player could still move while a menu was open, and
+(user-requested, not a bug) the camera wasn't frozen at all during
+menu use. All fixed via one shared signal (Cursor.lockState) that
+every menu, the camera, and player movement now all check consistently.
+Confirmed working by user.
 
 ## Known issues / TODO
 - If a newly-written script's type can't be resolved (CS0246 in a file
@@ -300,6 +321,17 @@ to defer it undiagnosed for now.
   leaves the popup list tiny even though the dropdown looks fixed when
   closed. Also bump the Item row's RectTransform height and the
   Template's width to match, or the bigger text clips/doesn't fit.
-- OPEN BUG (deferred by user, not yet diagnosed): a UI issue was found
-  during Break Seed / Graft menu retest after the dropdown-item font
-  fix. Ask the user what it was before touching this area again.
+- Any script that unlocks the cursor for a menu (currently GraftMenuUI,
+  BreakSeedMenuUI) should be treated as part of a shared "is a menu
+  open" contract: (1) check Cursor.lockState before opening and refuse
+  if it's already unlocked by another menu, (2) PlayerController and
+  MouseOrbitCamera both freeze based on that same lockState. If a new
+  menu is added later, wire it into this same pattern from the start
+  rather than rediscovering these three bugs again.
+- When debugging a behavior you can't reproduce yourself (no Play mode
+  access), don't guess-fix repeatedly -- add temporary Debug.Log
+  instrumentation, ask the user to reproduce, then read the Console
+  directly. Remove the temp logging once a real fix lands. In this
+  case the actual root cause (two menus open at once) turned out to be
+  something instrumentation wasn't even needed for once the user
+  described a second symptom.
