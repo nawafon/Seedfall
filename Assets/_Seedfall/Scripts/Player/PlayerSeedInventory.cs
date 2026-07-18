@@ -16,5 +16,10 @@ namespace Seedfall.Player
         {
             seedCores.Add(seedCore);
         }
+
+        public bool RemoveSeedCore(SeedCoreData seedCore)
+        {
+            return seedCores.Remove(seedCore);
+        }
     }
 }
