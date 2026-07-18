@@ -143,19 +143,43 @@ melee, mouse-orbit camera (Step 1). SeedCoreData ScriptableObject
 (E key, plants first inventory core into nearest unoccupied plot) + 3
 Plot_01/02/03 GameObjects (Step 3).
 
-Step 4a done and confirmed (grafting LOGIC only -- no UI, no inventory
-hookup yet, that's still to come before Step 4 as a whole is done):
-Assets/_Seedfall/Scripts/Weapons/ has WeaponGimmick.cs (enum),
-WeaponData.cs (ScriptableObject: name/damage/range/cooldown/gimmick/
+Step 4a done and confirmed (grafting LOGIC only): Assets/_Seedfall/
+Scripts/Weapons/ has WeaponGimmick.cs (enum), WeaponData.cs
+(ScriptableObject: name/damage/range/cooldown/gimmick/
 placeholderPrefab), GraftRecipe.cs (coreA/coreB/result + order-
 independent Matches()), GraftingSystem.cs (List<GraftRecipe>,
 TryGraft(a,b) returns matching WeaponData or null + logs "No recipe
 found"). 3 WeaponData + 3 GraftRecipe assets in
 ScriptableObjects/Weapons/ (Thornblaze/Windbriar/Cindergale).
 GraftTestDebug.cs is TEMPORARY test scaffolding (marked with a "//
-TEMP" comment) on GraftTestRig (under -- TESTING --) -- delete both
-the script and the GameObject once Step 4 is fully done and no longer
-needs manual key-press testing.
+TEMP" comment) on GraftTestRig (under -- TESTING --).
+
+Step 4b done and confirmed: GraftMenuUI.cs (Tab to toggle, unlocks/
+shows cursor while open) under -- UI --/GraftMenuController, full
+Canvas/Panel/2 dropdowns/button/result text built via Unity's own UI
+menu commands (not hand-assembled), CanvasScaler set to Scale With
+Screen Size so it isn't tiny on high-res displays. WeaponSpawnPoint
+child of Player. WeaponPickup_Placeholder.prefab (grey cube) wired
+into all 3 WeaponData assets' placeholderPrefab.
+
+DATA MODEL RESTRUCTURE, Part 1 of 2, done and confirmed: seed/core
+split into two items -- SeedData (found/picked up in world, plantable)
+vs SeedCoreData (graft-ready, only obtainable via Cracking Stone in
+Part 2, not built yet). SeedData.cs mirrors SeedCoreData.cs's exact
+style (get-only properties over private serialized fields). New
+SeedPickup.cs (trigger-based, mirrors SeedCorePickup.cs exactly) --
+the 3 world pickups now use SeedPickup + grant SeedData, not
+SeedCoreData directly. PlayerSeedInventory.cs got pure additions
+(seeds/Seeds/AddSeed/RemoveSeed/HasSeedOfType/RemoveSeedOfType +
+sapAmounts/AddSap/GetSapCount + GetDebugSummary() for the I-key debug
+log) -- existing seedCores/core methods untouched.
+SeedCorePickup.cs is now dead code (superseded by SeedPickup.cs, not
+attached to anything, left in place for later cleanup).
+
+Known consequence, expected and not a bug: GraftMenuUI is currently
+unusable in practice -- the player can hold SeedData but zero
+SeedCoreData, since nothing produces cores yet. Cores return in Part 2
+via the Cracking Stone.
 
 PlantPlot growth is plain progress data (_growProgress float, 0-1)
 driven by a coroutine -- NOT a scaled transform. Each plot has two
@@ -175,29 +199,26 @@ SimpleFollowCamera.cs was deleted (dead code, confirmed unattached,
 superseded by MouseOrbitCamera).
 
 ## Last Session
-2026-07-18 — Reorganized SampleScene hierarchy to match the new Unity
-Organization Standards (4 folders, renamed Player/Test_MeleeTarget,
-deleted dead SimpleFollowCamera.cs). Built and confirmed working Step 3
-(PlantPlot.cs, PlantingInteract.cs, 3 plots), then refactored
-PlantPlot's growth from a scaled placeholder to plain progress data +
-a coroutine swapping two pre-placed Stage_Small/Stage_Grown children,
-confirmed working. Added Hard Rule 9 (scripts first, confirm zero
-compile errors via MCP console query, only then do MCP scene setup).
-Built and confirmed working Step 4a: grafting logic (WeaponGimmick,
-WeaponData, GraftRecipe, GraftingSystem, temp GraftTestDebug), 6
-ScriptableObject assets, and a GraftTestRig test rig wired via MCP.
-Following Rule 9 this time worked cleanly -- all 5 new scripts compiled
-on the first try with no repeat of the earlier desync issue.
+2026-07-18 — Built and confirmed working Step 4b (GraftMenuUI: Tab
+menu, dropdowns, graft button, result text, built via Unity's own UI
+menu commands rather than hand-assembled). Hit two real usability bugs
+after first "confirm" attempt: (1) menu was unusable because
+MouseOrbitCamera locks/hides the cursor by default and GraftMenuUI
+never released it -- fixed by unlocking/showing the cursor on menu
+open; (2) UI was tiny/unreadable on a 2560x1440 display because the
+Canvas had no CanvasScaler scaling and small fixed-pixel offsets --
+fixed with Scale With Screen Size + a fixed centered 600x450 panel.
 
-Hit a real AssetDatabase/CompilationPipeline desync (Step 3): a
-freshly-written .cs file can be recognized as an imported MonoScript
-asset yet never actually enter Assembly-CSharp's compiled source list,
-even after repeated Unity_ManageAsset "Import" calls,
-AssetDatabase.Refresh, and Editor focus — the fix was deleting the
-file + its .meta entirely and recreating both from scratch. Also
-discovered the scene was NOT being autosaved by any of the MCP
-GameObject/component edits — a full Hierarchy reorg sat unsaved in
-memory until an explicit Unity_ManageScene Save call.
+Then completed the seed/core data model restructure, Part 1 of 2:
+split "seed" and "seed core" into separate items (SeedData vs
+SeedCoreData; cores now only obtainable via a Cracking Stone in Part 2,
+not yet built). Added SeedData.cs + SeedPickup.cs (new file, mirroring
+SeedCoreData.cs/SeedCorePickup.cs exactly), pure additions to
+PlayerSeedInventory.cs (verified byte-identical pre-existing code),
+swapped SeedCorePickup -> SeedPickup component on all 3 world pickups
+(verified no missing-script refs via GetComponents<Component>() null
+check, not just Console). GraftMenuUI is now expected-broken (player
+holds SeedData, zero SeedCoreData) until Part 2.
 
 ## Known issues / TODO
 - If a newly-written script's type can't be resolved (CS0246 in a file
@@ -232,3 +253,17 @@ memory until an explicit Unity_ManageScene Save call.
   MCP, then check GetState. Before retrying whatever failed, verify
   nothing partial was created (e.g. via Glob on the expected output
   path) rather than assuming a clean slate or assuming it fully ran.
+- MouseOrbitCamera locks/hides the cursor by default for mouse-look.
+  Any new UI screen that needs clicking (menus, inventory, etc.) MUST
+  explicitly unlock/show the cursor when it opens and re-lock/hide it
+  when it closes, or it'll be completely unusable with no visible
+  cursor -- easy to miss since everything else works fine.
+- A new Canvas has no CanvasScaler scaling by default (fixed pixel
+  sizes) -- on a high-res display this renders as a tiny illegible
+  cluster. Set uiScaleMode to ScaleWithScreenSize with a sane reference
+  resolution (e.g. 1920x1080) for any new UI.
+- For "missing script" checks after a component swap (remove +
+  add different type), don't rely on the Console alone -- query
+  GetComponents<Component>() via RunCommand and count nulls. That's
+  the same thing a Console-silent "Missing (Mono Script)" Inspector
+  warning would show up as.

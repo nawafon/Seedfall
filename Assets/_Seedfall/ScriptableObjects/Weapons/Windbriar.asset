@@ -17,4 +17,4 @@ MonoBehaviour:
   range: 3.5
   attackCooldown: 0.4
   gimmick: 2
-  placeholderPrefab: {fileID: 0}
+  placeholderPrefab: {fileID: 6692457786361226350, guid: 26ee02febe92b25409aaf1942f52f390, type: 3}

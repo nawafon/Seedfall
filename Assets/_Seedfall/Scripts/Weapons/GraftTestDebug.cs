@@ -1,15 +1,22 @@
 // TEMP: remove after Step 4a confirmed
 using UnityEngine;
 using Seedfall.Plants;
+using Seedfall.Player;
 
 namespace Seedfall.Weapons
 {
     public class GraftTestDebug : MonoBehaviour
     {
         public GraftingSystem graftingSystem;
+        public PlayerSeedInventory playerInventory;
 
         private void Update()
         {
+            if (Input.GetKeyDown(KeyCode.I))
+            {
+                Debug.Log(playerInventory.GetDebugSummary());
+            }
+
             if (Input.GetKeyDown(KeyCode.Alpha1))
             {
                 WeaponData result = graftingSystem.TryGraft(SeedCoreType.Growth, SeedCoreType.Heat);
