@@ -36,18 +36,29 @@ unlimited base building, ally AI, hunting/cooking/traversal tools.
 ## Hard rules (never break)
 1. Unity version is 6000.5.4f1. Never upgrade. Never change Project 
    Settings unless explicitly told.
-2. You CANNOT see the Unity Editor or Blender viewport. Never claim 
-   something "looks right" or "should appear." Only report file changes.
-3. After any script, ALWAYS tell the user: what GameObject to attach it 
-   to, what Inspector fields to set, and what they should see on Play.
+2. Unity MCP is connected: you CAN directly create GameObjects, add 
+   components, set Inspector fields, and wire references, and you CAN 
+   query scene/hierarchy/component data. This is structural access 
+   only, though -- you still CANNOT see rendered visuals (Game view, 
+   Scene view, or Blender viewport), judge aesthetic quality, camera 
+   feel, or whether gameplay is fun. Never claim something "looks 
+   right" or "should appear." Only the user can judge that.
+3. After any script or Editor setup, ALWAYS tell the user exactly what 
+   you did (GameObjects created, components added, fields set) and 
+   what they should test by pressing Play themselves.
 4. Never delete/overwrite a file without showing the change first.
 5. One system at a time. Build → user tests in Editor → user confirms 
    → next. Never scaffold multiple features at once.
 6. Scripts go in Assets/_Seedfall/Scripts/. Docs in .../Docs/. Never 
    scatter files at the project root (except CLAUDE.md and .gitignore).
-7. Editor-only tasks (attaching components, baking, creating 
-   ScriptableObject assets): WRITE the steps for the user. Never pretend 
-   you did them.
+7. Editor-only setup (creating GameObjects, adding components, setting 
+   Inspector fields, wiring references, creating ScriptableObject 
+   assets): do this yourself via Unity MCP when connected. Before 
+   changing any Project Setting, still stop and ask first, per Rule 1 
+   -- MCP access does not override that. If an MCP action fails or the 
+   connection drops, say so plainly and fall back to file-based 
+   changes plus manual instructions for that specific piece only. 
+   Never pretend you did something you didn't.
 8. Remind the user to git commit after every working step.
 
 ## Build order (check the box when a step is tested & working)
