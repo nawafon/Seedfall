@@ -1,13 +1,13 @@
-// TEMP: remove after Step 4a confirmed
+// No longer TEMP test scaffolding -- the Alpha1-4 test-graft shortcuts were removed
+// once GraftMenuUI covered the same combinations for real. This is now the only
+// I-key debug view of PlayerSeedInventory's contents (seeds/cores/sap), so it stays.
 using UnityEngine;
-using Seedfall.Plants;
 using Seedfall.Player;
 
 namespace Seedfall.Weapons
 {
     public class GraftTestDebug : MonoBehaviour
     {
-        public GraftingSystem graftingSystem;
         public PlayerSeedInventory playerInventory;
 
         private void Update()
@@ -15,42 +15,6 @@ namespace Seedfall.Weapons
             if (Input.GetKeyDown(KeyCode.I))
             {
                 Debug.Log(playerInventory.GetDebugSummary());
-            }
-
-            if (Input.GetKeyDown(KeyCode.Alpha1))
-            {
-                WeaponData result = graftingSystem.TryGraft(SeedCoreType.Growth, SeedCoreType.Heat);
-                if (result != null)
-                {
-                    Debug.Log($"Test 1: got {result.weaponName}");
-                }
-            }
-
-            if (Input.GetKeyDown(KeyCode.Alpha2))
-            {
-                WeaponData result = graftingSystem.TryGraft(SeedCoreType.Growth, SeedCoreType.Wind);
-                if (result != null)
-                {
-                    Debug.Log($"Test 2: got {result.weaponName}");
-                }
-            }
-
-            if (Input.GetKeyDown(KeyCode.Alpha3))
-            {
-                WeaponData result = graftingSystem.TryGraft(SeedCoreType.Heat, SeedCoreType.Wind);
-                if (result != null)
-                {
-                    Debug.Log($"Test 3: got {result.weaponName}");
-                }
-            }
-
-            if (Input.GetKeyDown(KeyCode.Alpha4))
-            {
-                WeaponData result = graftingSystem.TryGraft(SeedCoreType.Growth, SeedCoreType.Growth);
-                if (result != null)
-                {
-                    Debug.Log($"Test 4: got {result.weaponName}");
-                }
             }
         }
     }

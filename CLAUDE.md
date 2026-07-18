@@ -126,7 +126,7 @@ CLEANUP DISCIPLINE:
 - [x] 1. Player movement + bare-hand melee (grey capsule, fists work)
 - [x] 2. SeedCore data (Growth/Heat/Wind) + findable seed pickups in world
 - [x] 3. Planting in a small plot area (limited plot count, not scarcity)
-- [ ] 4. Grafting system → produces a weapon (not just a seed/plant)
+- [x] 4. Grafting system → produces a weapon (not just a seed/plant)
 - [ ] 5. Weapon pickup, equip, and swing (replacing bare hands)
 - [ ] 6. Expedition structure: leave plot area, weapon active in a test 
       arena, weapon wilts at expedition end and drops seeds
@@ -151,8 +151,13 @@ independent Matches()), GraftingSystem.cs (List<GraftRecipe>,
 TryGraft(a,b) returns matching WeaponData or null + logs "No recipe
 found"). 3 WeaponData + 3 GraftRecipe assets in
 ScriptableObjects/Weapons/ (Thornblaze/Windbriar/Cindergale).
-GraftTestDebug.cs is TEMPORARY test scaffolding (marked with a "//
-TEMP" comment) on GraftTestRig (under -- TESTING --).
+GraftTestDebug.cs was TEMPORARY test scaffolding on GraftTestRig (under
+-- TESTING --), but the number-key (Alpha1-4) test-graft shortcuts were
+removed once GraftMenuUI covered the same combinations for real -- it's
+now a small permanent debug tool (I-key logs
+PlayerSeedInventory.GetDebugSummary(), the only place that's bound).
+GraftTestRig's now-orphaned graftingSystem Inspector reference was left
+as-is (Unity drops it silently, harmless) rather than touched via MCP.
 
 Step 4b done and confirmed: GraftMenuUI.cs (Tab to toggle, unlocks/
 shows cursor while open) under -- UI --/GraftMenuController, full
