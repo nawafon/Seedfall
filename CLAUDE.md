@@ -52,7 +52,7 @@ unlimited base building, ally AI, hunting/cooking/traversal tools.
 
 ## Build order (check the box when a step is tested & working)
 - [x] 0. Setup / Git / memory file
-- [ ] 1. Player movement + bare-hand melee (grey capsule, fists work)
+- [x] 1. Player movement + bare-hand melee (grey capsule, fists work)
 - [ ] 2. SeedCore data (Growth/Heat/Wind) + findable seed pickups in world
 - [ ] 3. Planting in a small plot area (limited plot count, not scarcity)
 - [ ] 4. Grafting system → produces a weapon (not just a seed/plant)
@@ -65,14 +65,24 @@ unlimited base building, ally AI, hunting/cooking/traversal tools.
 - [ ] 8. (post-MVP) Sectors, story, base depth, defense, allies
 
 ## Current State
-Step 0 complete: folders, .gitignore, CLAUDE.md, initial commit, and push
-to GitHub (private repo, origin set) all done. Nothing else built yet.
+Step 1 complete and confirmed in Editor: CharacterController-based
+third-person movement (camera-relative, no jump), bare-hand melee
+(left-click, OverlapSphere hit check, cooldown), and a mouse-orbit
+follow camera (MouseOrbitCamera.cs on Main Camera, root-level object,
+not parented to the player). SimpleFollowCamera.cs still exists on disk
+but is unused/unattached — an earlier fixed-angle camera approach
+superseded by MouseOrbitCamera.
 
 ## Last Session
-2026-07-18 — Design corrected after external review (ChatGPT + Kimi
-critiques): replaced mid-combat weapon durability with per-expedition
-wilting, added hands-first start, added plots-based resource limit,
-added healing-seed-drop chance.
+2026-07-18 — Built and confirmed working: PlayerController.cs,
+BareHandMelee.cs, MouseOrbitCamera.cs. Also switched Active Input
+Handling to "Both" in Project Settings (approved) so legacy Input
+still works alongside the installed new Input System package. Hit and
+fixed a camera/movement feedback-loop bug caused by parenting the
+camera directly to the rotating player; fix was an independent
+mouse-orbit camera that never inherits the player's rotation.
 
 ## Known issues / TODO
-(none yet)
+- SimpleFollowCamera.cs (Assets/_Seedfall/Scripts/Player/) is dead code
+  — not attached to anything, superseded by MouseOrbitCamera.cs. Safe
+  to delete later; leaving it for now since it hasn't been asked for.
