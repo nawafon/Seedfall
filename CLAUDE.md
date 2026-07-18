@@ -139,10 +139,19 @@ CLEANUP DISCIPLINE:
 Steps 0-3 complete and confirmed in Editor. Player movement, bare-hand
 melee, mouse-orbit camera (Step 1). SeedCoreData ScriptableObject
 (Growth/Heat/Wind assets in ScriptableObjects/) + PlayerSeedInventory +
-3 SeedCorePickup spheres (Step 2). PlantPlot.cs (occupied/growing state,
-TryPlant, colored placeholder cylinder that grows over growTimeSeconds)
-+ PlantingInteract.cs (E key, plants first inventory core into nearest
-unoccupied plot) + 3 Plot_01/02/03 GameObjects (Step 3).
+3 SeedCorePickup spheres (Step 2). PlantPlot.cs + PlantingInteract.cs
+(E key, plants first inventory core into nearest unoccupied plot) + 3
+Plot_01/02/03 GameObjects (Step 3).
+
+PlantPlot growth is plain progress data (_growProgress float, 0-1)
+driven by a coroutine -- NOT a scaled transform. Each plot has two
+pre-placed, initially-inactive child objects, Stage_Small and
+Stage_Grown (colliders removed, wired into the PlantPlot component),
+swapped via SetActive when progress crosses stageSwitchThreshold
+(default 0.5). This means real small/grown models can later replace
+these placeholder cylinders as a straight swap, no code changes needed.
+Color tinting by core type (green/orange/cyan) still applied to both
+stage objects at plant time.
 
 SampleScene hierarchy now follows Unity Organization Standards: 4 root
 folders -- PLAYER -- (Player, Main Camera), -- WORLD -- (Test_MeleeTarget,
@@ -155,17 +164,21 @@ superseded by MouseOrbitCamera).
 2026-07-18 — Reorganized SampleScene hierarchy to match the new Unity
 Organization Standards (4 folders, renamed Player/Test_MeleeTarget,
 deleted dead SimpleFollowCamera.cs). Built and confirmed working Step 3
-(PlantPlot.cs, PlantingInteract.cs, 3 plots). Hit a real
-AssetDatabase/CompilationPipeline desync: a freshly-written .cs file
-can be recognized as an imported MonoScript asset yet never actually
-enter Assembly-CSharp's compiled source list, even after repeated
-Unity_ManageAsset "Import" calls, AssetDatabase.Refresh, and Editor
-focus — the fix was deleting the file + its .meta entirely and
+(PlantPlot.cs, PlantingInteract.cs, 3 plots), then refactored
+PlantPlot's growth from a scaled placeholder to plain progress data +
+a coroutine swapping two pre-placed Stage_Small/Stage_Grown children,
+confirmed working. Added Hard Rule 9 (scripts first, confirm zero
+compile errors via MCP console query, only then do MCP scene setup).
+
+Hit a real AssetDatabase/CompilationPipeline desync: a freshly-written
+.cs file can be recognized as an imported MonoScript asset yet never
+actually enter Assembly-CSharp's compiled source list, even after
+repeated Unity_ManageAsset "Import" calls, AssetDatabase.Refresh, and
+Editor focus — the fix was deleting the file + its .meta entirely and
 recreating both from scratch. Also discovered the scene was NOT being
 autosaved by any of the MCP GameObject/component edits — a full
 Hierarchy reorg sat unsaved in memory until an explicit
-Unity_ManageScene Save call. Lesson: always explicitly save the scene
-after Editor-only MCP work, don't assume it persists.
+Unity_ManageScene Save call.
 
 ## Known issues / TODO
 - If a newly-written script's type can't be resolved (CS0246 in a file
@@ -178,3 +191,15 @@ after Editor-only MCP work, don't assume it persists.
 - After any Editor-only MCP work that changes the scene (GameObjects,
   components, hierarchy), explicitly call Unity_ManageScene Save --
   those changes do not appear to autosave.
+- Unity_ManageGameObject's "create" action treats `position` as WORLD
+  space even when `parent` is set; "modify" treats `position` as LOCAL
+  space. Inconsistent -- compensate accordingly.
+- `components_to_remove` and `set_active` passed alongside "create"
+  don't reliably take effect -- do them as separate follow-up
+  "remove_component"/"modify" calls.
+- Once a GameObject is inactive, plain name lookup for `target` fails
+  -- use `search_method: "by_path"` with the full hierarchy path.
+- `set_component_property` cannot assign GameObject-typed fields (only
+  asset references, e.g. ScriptableObjects, work via a plain asset path
+  string). For wiring scene-object references, use Unity_RunCommand
+  with `SerializedObject`/`objectReferenceValue` instead.
