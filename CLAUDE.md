@@ -162,24 +162,39 @@ Screen Size so it isn't tiny on high-res displays. WeaponSpawnPoint
 child of Player. WeaponPickup_Placeholder.prefab (grey cube) wired
 into all 3 WeaponData assets' placeholderPrefab.
 
-DATA MODEL RESTRUCTURE, Part 1 of 2, done and confirmed: seed/core
-split into two items -- SeedData (found/picked up in world, plantable)
-vs SeedCoreData (graft-ready, only obtainable via Cracking Stone in
-Part 2, not built yet). SeedData.cs mirrors SeedCoreData.cs's exact
-style (get-only properties over private serialized fields). New
-SeedPickup.cs (trigger-based, mirrors SeedCorePickup.cs exactly) --
-the 3 world pickups now use SeedPickup + grant SeedData, not
-SeedCoreData directly. PlayerSeedInventory.cs got pure additions
+DATA MODEL RESTRUCTURE, done and confirmed (design changed mid-build,
+see history below): seed/core split into two items -- SeedData
+(found/picked up in world, plantable) vs SeedCoreData (graft-ready).
+SeedData.cs mirrors SeedCoreData.cs's exact style (get-only properties
+over private serialized fields). New SeedPickup.cs (trigger-based,
+mirrors SeedCorePickup.cs exactly) -- the 3 world pickups use
+SeedPickup + grant SeedData, not SeedCoreData directly.
+PlayerSeedInventory.cs got pure additions across two rounds: Part 1
 (seeds/Seeds/AddSeed/RemoveSeed/HasSeedOfType/RemoveSeedOfType +
 sapAmounts/AddSap/GetSapCount + GetDebugSummary() for the I-key debug
-log) -- existing seedCores/core methods untouched.
+log) and the rock-uses round below -- existing seedCores/core methods
+from before Part 1 untouched throughout.
 SeedCorePickup.cs is now dead code (superseded by SeedPickup.cs, not
 attached to anything, left in place for later cleanup).
 
-Known consequence, expected and not a bug: GraftMenuUI is currently
-unusable in practice -- the player can hold SeedData but zero
-SeedCoreData, since nothing produces cores yet. Cores return in Part 2
-via the Cracking Stone.
+How you get SeedCoreData now: the "Cracking Stone" (dedicated world
+object) design was built, then SCRAPPED before confirmation and fully
+deleted (CrackingStone.cs, CrackMenuUI.cs, and their scene objects --
+none of it exists anymore). Replaced with: small rock pickups
+(RockPickup.cs, Assets/_Seedfall/Scripts/Tools/, +3 uses each) grant a
+durability pool on PlayerSeedInventory (rockUses/AddRockUses/
+GetRockUses/UseRock). With >=1 rock use available, press R ANYWHERE
+(no proximity needed) to open BreakSeedMenuUI.cs, which breaks 1 held
+SeedData into 1 matching SeedCoreData for 1 rock use. Big throwable
+rocks are explicitly POST-MVP, not built. 3 RockPickup_01/02/03 in the
+scene under -- PICKUPS --. BreakSeedMenuPanel built under the existing
+GraftMenu Canvas (no duplicate Canvas/EventSystem).
+
+Confirmed working functionally (rock pickup -> R menu -> break seed ->
+core gained, rock uses decrement correctly, "out of rock uses" and
+"don't have that seed" paths both correct). A UI bug was found during
+testing and explicitly deferred by the user -- not yet diagnosed. See
+Known issues.
 
 PlantPlot growth is plain progress data (_growProgress float, 0-1)
 driven by a coroutine -- NOT a scaled transform. Each plot has two
@@ -199,26 +214,32 @@ SimpleFollowCamera.cs was deleted (dead code, confirmed unattached,
 superseded by MouseOrbitCamera).
 
 ## Last Session
-2026-07-18 — Built and confirmed working Step 4b (GraftMenuUI: Tab
-menu, dropdowns, graft button, result text, built via Unity's own UI
-menu commands rather than hand-assembled). Hit two real usability bugs
-after first "confirm" attempt: (1) menu was unusable because
-MouseOrbitCamera locks/hides the cursor by default and GraftMenuUI
-never released it -- fixed by unlocking/showing the cursor on menu
-open; (2) UI was tiny/unreadable on a 2560x1440 display because the
-Canvas had no CanvasScaler scaling and small fixed-pixel offsets --
-fixed with Scale With Screen Size + a fixed centered 600x450 panel.
+2026-07-18/19 — Built and confirmed working Step 4b (GraftMenuUI). Hit
+two usability bugs, both fixed: cursor never unlocked on menu open
+(MouseOrbitCamera hides it by default), and UI was tiny/unreadable at
+2560x1440 (no CanvasScaler scaling) -- fixed with Scale With Screen
+Size + a centered panel.
 
-Then completed the seed/core data model restructure, Part 1 of 2:
-split "seed" and "seed core" into separate items (SeedData vs
-SeedCoreData; cores now only obtainable via a Cracking Stone in Part 2,
-not yet built). Added SeedData.cs + SeedPickup.cs (new file, mirroring
-SeedCoreData.cs/SeedCorePickup.cs exactly), pure additions to
-PlayerSeedInventory.cs (verified byte-identical pre-existing code),
-swapped SeedCorePickup -> SeedPickup component on all 3 world pickups
-(verified no missing-script refs via GetComponents<Component>() null
-check, not just Console). GraftMenuUI is now expected-broken (player
-holds SeedData, zero SeedCoreData) until Part 2.
+Completed the seed/core data model restructure Part 1: split SeedData
+(plantable, world pickup) from SeedCoreData (graft-ready). Then built
+a "Cracking Stone" world object for turning seeds into cores (Part 2)
+-- but the design changed again before confirmation, so it was fully
+deleted (scripts + scene objects) and rebuilt as: rock pickups grant a
+rock-uses pool, press R anywhere to open a Break Seed menu that
+consumes 1 rock use + 1 seed for 1 core. Confirmed working
+functionally end to end.
+
+Hit a real "changes made during Play mode don't persist" trap while
+iterating on UI sizing -- a fix applied via RunCommand while the user
+was in Play mode silently vanished the moment Play stopped, since
+Unity discards runtime edits to scene objects. Also found that
+TMP_Dropdown has TWO separate text elements that both need sizing: the
+visible current-selection Label, and a completely separate template
+buried in Template/Viewport/Content/Item/Item Label used for the
+popup's option rows -- fixing only the first one left the dropdown's
+open-list text tiny and illegible even though everything else looked
+correctly sized. User found a further UI bug during retest but asked
+to defer it undiagnosed for now.
 
 ## Known issues / TODO
 - If a newly-written script's type can't be resolved (CS0246 in a file
@@ -267,3 +288,18 @@ holds SeedData, zero SeedCoreData) until Part 2.
   GetComponents<Component>() via RunCommand and count nulls. That's
   the same thing a Console-silent "Missing (Mono Script)" Inspector
   warning would show up as.
+- Changes made via RunCommand (or any MCP action) while the Editor is
+  in Play mode do NOT persist -- Unity discards runtime edits to scene
+  objects the moment Play stops. Always check IsPlaying via GetState
+  before relying on a scene edit sticking; if true, ask the user to
+  stop Play first.
+- TMP_Dropdown has two separate text elements that both need sizing
+  independently: the visible current-selection Label, and a totally
+  separate template at Template/Viewport/Content/Item/Item Label used
+  to render each row of the open popup list. Resizing only the Label
+  leaves the popup list tiny even though the dropdown looks fixed when
+  closed. Also bump the Item row's RectTransform height and the
+  Template's width to match, or the bigger text clips/doesn't fit.
+- OPEN BUG (deferred by user, not yet diagnosed): a UI issue was found
+  during Break Seed / Graft menu retest after the dropdown-item font
+  fix. Ask the user what it was before touching this area again.

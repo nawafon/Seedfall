@@ -137,7 +137,32 @@ namespace Seedfall.Player
 
                 summary += $"{type}: seeds={seedCount}, cores={coreCount}, sap={sapCount}\n";
             }
+
+            summary += $"rockUses={rockUses}\n";
+
             return summary;
+        }
+
+        [SerializeField] private int rockUses = 0;
+
+        public void AddRockUses(int amount)
+        {
+            rockUses += amount;
+        }
+
+        public int GetRockUses()
+        {
+            return rockUses;
+        }
+
+        public bool UseRock()
+        {
+            if (rockUses <= 0)
+            {
+                return false;
+            }
+            rockUses--;
+            return true;
         }
     }
 }
