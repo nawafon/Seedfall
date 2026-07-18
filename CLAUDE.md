@@ -219,6 +219,30 @@ these placeholder cylinders as a straight swap, no code changes needed.
 Color tinting by core type (green/orange/cyan) still applied to both
 stage objects at plant time.
 
+PLANTING/HARVEST REWORK, done, compiled, committed -- NOT yet
+confirmed via a Play-mode test. PlantPlot now plants SeedData (found
+seeds), not SeedCoreData (cores only come from Rock/Break-Seed now,
+never planted directly). Field/property renamed _plantedCore/
+PlantedCore -> _plantedSeed/PlantedSeed; TryPlant(SeedCoreData, ...)
+-> TryPlant(SeedData, ...) (calls inventory.RemoveSeed, not
+RemoveSeedCore); TintStages and the maturity log use SeedData's real
+fields (SeedType, DisplayName). Added sapYield (int, Inspector-
+exposed, default 1) and TryHarvest(PlayerSeedInventory): only succeeds
+if occupied+matured, calls inventory.AddSap(seed.SeedType, sapYield),
+then fully resets the plot to empty (must replant to use again) --
+harvesting yields Sap only, no plant/weapon output at MVP. Added
+public HasMatured. PlantingInteract's single E-press interact now does
+two passes over nearby colliders: harvest any occupied+matured plot
+first (priority), else plant _inventory.Seeds[0] into the nearest
+unoccupied plot. growTimeSeconds/stageSmall/stageGrown/
+stageSwitchThreshold and their Inspector wiring on the 3 Plot objects
+were untouched by this change, per the hard boundary it was built
+under. Test not yet run: plant a seed (E near empty plot), wait
+growTimeSeconds, confirm "Plot matured: [name]" log + grown stage
+visible, press E again on the same plot, confirm "Harvested 1 [Type]
+Sap" log + I-key sap count increments + plot returns to fully empty
+(both stages hidden, replantable immediately).
+
 SampleScene hierarchy now follows Unity Organization Standards: 4 root
 folders -- PLAYER -- (Player, Main Camera), -- WORLD -- (Test_MeleeTarget,
 Plot_01/02/03), -- PICKUPS -- (3 SeedPickup_* spheres), -- ENVIRONMENT --
@@ -262,7 +286,12 @@ menu use. All fixed via one shared signal (Cursor.lockState) that
 every menu, the camera, and player movement now all check consistently.
 Confirmed working by user.
 
-## Known issues / TODO
+Also reworked PlantPlot/PlantingInteract per the SeedData/Sap plan
+above (planting now uses SeedData not SeedCoreData; added
+TryHarvest/sapYield/HasMatured). This landed as uncommitted working-
+tree changes from a prior context window; picked back up this session
+via `git status`/`git diff` rather than session memory, committed, and
+pushed. Not yet Play-tested by the user.
 - If a newly-written script's type can't be resolved (CS0246 in a file
   that references it, even though the referenced file itself shows no
   error), don't just keep re-importing it — check whether it's actually
@@ -335,3 +364,12 @@ Confirmed working by user.
   case the actual root cause (two menus open at once) turned out to be
   something instrumentation wasn't even needed for once the user
   described a second symptom.
+- When asked to commit "those N files" after a context gap (new
+  session, compacted context), don't stage-and-commit by filename
+  alone -- `git diff` each file first. Here, 2 of 6 modified files
+  (PlantPlot.cs, PlantingInteract.cs) contained an entire separate
+  feature (SeedData/Sap harvest rework) that a menu-fix commit message
+  didn't mention at all, and CLAUDE.md hadn't documented yet either.
+  The work was correct and already compiling, but it was one `git
+  diff` away from being silently mislabeled in history. Read the diff,
+  not just the file list, before writing the commit message.
