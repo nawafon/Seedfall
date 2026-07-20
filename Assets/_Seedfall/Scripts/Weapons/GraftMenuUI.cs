@@ -16,6 +16,7 @@ namespace Seedfall.Weapons
         [SerializeField] private TMP_Text resultText;
         [SerializeField] private GraftingSystem graftingSystem;
         [SerializeField] private PlayerSeedInventory playerInventory;
+        [SerializeField] private WeaponInventory weaponInventory;
         [SerializeField] private Transform spawnPoint;
 
         // Not in the original field list -- needed so the "placeholderPrefab wasn't set"
@@ -87,20 +88,34 @@ namespace Seedfall.Weapons
             playerInventory.RemoveCoreOfType(coreA);
             playerInventory.RemoveCoreOfType(coreB);
 
-            GameObject prefabToSpawn = result.placeholderPrefab;
-            if (prefabToSpawn == null)
+            // A grafted weapon goes straight into inventory if a slot is free. Only if
+            // all 3 slots are full does it fall to the ground as a WeaponPickup instead.
+            if (!weaponInventory.TryAddWeapon(result))
             {
-                Debug.LogWarning($"WeaponData '{result.weaponName}' has no placeholderPrefab assigned -- falling back to the shared placeholder.");
-                prefabToSpawn = fallbackPlaceholderPrefab;
-            }
+                GameObject prefabToSpawn = result.placeholderPrefab;
+                if (prefabToSpawn == null)
+                {
+                    Debug.LogWarning($"WeaponData '{result.weaponName}' has no placeholderPrefab assigned -- falling back to the shared placeholder.");
+                    prefabToSpawn = fallbackPlaceholderPrefab;
+                }
 
-            if (prefabToSpawn != null)
-            {
-                Instantiate(prefabToSpawn, spawnPoint.position, spawnPoint.rotation);
-            }
-            else
-            {
-                Debug.LogWarning("No placeholder prefab available to spawn (neither WeaponData.placeholderPrefab nor fallbackPlaceholderPrefab is set).");
+                if (prefabToSpawn != null)
+                {
+                    GameObject spawned = Instantiate(prefabToSpawn, spawnPoint.position, spawnPoint.rotation);
+                    WeaponPickup pickup = spawned.GetComponent<WeaponPickup>();
+                    if (pickup != null)
+                    {
+                        pickup.weapon = result;
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"Spawned placeholder for '{result.weaponName}' has no WeaponPickup component -- it can't be picked up.");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning("No placeholder prefab available to spawn (neither WeaponData.placeholderPrefab nor fallbackPlaceholderPrefab is set).");
+                }
             }
 
             resultText.text = $"Crafted: {result.weaponName}!";

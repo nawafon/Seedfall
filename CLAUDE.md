@@ -127,7 +127,8 @@ CLEANUP DISCIPLINE:
 - [x] 2. SeedCore data (Growth/Heat/Wind) + findable seed pickups in world
 - [x] 3. Planting in a small plot area (limited plot count, not scarcity)
 - [x] 4. Grafting system → produces a weapon (not just a seed/plant)
-- [ ] 5. Weapon pickup, equip, and swing (replacing bare hands)
+- [ ] 5. Weapon pickup, equip, and swing (replacing bare hands) -- code +
+      scene wiring done, NOT yet Play-tested (see Current State)
 - [ ] 6. Expedition structure: leave plot area, weapon active in a test 
       arena, weapon wilts at expedition end and drops seeds
 - [ ] 7. Dumb simple enemies in the test arena to fight (or heal, small 
@@ -249,10 +250,92 @@ back to fully empty and immediately replantable.
 
 SampleScene hierarchy now follows Unity Organization Standards: 4 root
 folders -- PLAYER -- (Player, Main Camera), -- WORLD -- (Test_MeleeTarget,
-Plot_01/02/03), -- PICKUPS -- (3 SeedPickup_* spheres), -- ENVIRONMENT --
+Plot_01/02/03), -- PICKUPS -- (now 6 SeedPickup_* spheres, 2 per core
+type -- see Step 5 note below), -- ENVIRONMENT --
 (Plane, Directional Light, Global Volume). Nothing loose at scene root.
 SimpleFollowCamera.cs was deleted (dead code, confirmed unattached,
 superseded by MouseOrbitCamera).
+
+STEP 5 (weapon pickup/equip/swing), code + scene wiring done via MCP,
+confirmed zero compile errors, NOT yet Play-tested -- session ended
+before testing happened. 7 files: PlantingInteract.cs (E-key listening
+removed, plot logic exposed as public TryInteractWithNearbyPlot());
+new PlayerInteract.cs (single E-key arbiter -- on E, scans once for
+both nearby PlantPlots and WeaponPickups, whichever candidate is
+physically closest wins and fires, ties favor the plot; an unoccupied
+plot only counts as a candidate if the player actually has a seed to
+plant, matching PlantingInteract's real behavior, so a reachable
+weapon pickup isn't ignored for nothing); new WeaponPickup.cs (trigger
+collider, TryPickUp(WeaponInventory) -- doesn't destroy itself if the
+inventory's full, stays on the ground); BareHandMelee.cs extended IN
+PLACE (not renamed -- renaming risks GUID detachment since it's
+already on Player) with SetStats(range, radius, cooldown)/
+ResetToBareHandStats() (original serialized values cached in Awake),
+plus a juice pass: successful hits flash the target's renderer white
+via the same _BaseColor/_Color check PlantPlot.TintRenderer uses, and
+trigger a small camera shake; new WeaponInventory.cs (3 fixed slots,
+keys 1/2/3 equip a slot and call into BareHandMelee's SetStats/Reset --
+no parallel attack system, empty slot or nothing equipped = bare fists
+automatically); MouseOrbitCamera.cs got a Shake(duration, magnitude)
+method whose offset is folded into its own LateUpdate position write
+(it recomputes transform.position from scratch every frame, so
+anything writing from outside would just get overwritten -- folding
+the shake into the same authoritative write sidesteps any script-
+execution-order race entirely); GraftMenuUI.cs changed ONLY at its
+weapon-spawn point -- a successful graft now calls
+WeaponInventory.TryAddWeapon() first, only spawning a WeaponPickup
+cube (with WeaponData attached) if all 3 slots are already full;
+GraftTestDebug.cs's I-key debug log now also prints WeaponInventory's
+slot summary.
+
+Scene wiring done via MCP: WeaponInventory + PlayerInteract added to
+Player; BareHandMelee.orbitCamera -> Main Camera's MouseOrbitCamera;
+GraftMenuUI.weaponInventory and GraftTestDebug.weaponInventory -> Player's
+WeaponInventory (the latter was easy to forget -- caught it via
+get_components showing null before saving); WeaponPickup added to the
+WeaponPickup_Placeholder prefab with its collider's isTrigger EXPLICITLY
+set true in the same RunCommand (PrefabUtility.LoadPrefabContents +
+AddComponent does NOT reliably fire Reset() the way the Editor's Add
+Component menu does -- confirmed this gap rather than assuming Reset()
+would cover it, then verified isTrigger=true on the saved asset
+afterward). set_component_property's documented dict-based reference
+syntax ({"find":..., "component":...}) does NOT work despite being in
+the tool's own schema/example -- fails with a JSON deserialization
+error every time; RunCommand + SerializedObject.FindProperty(...)
+.objectReferenceValue is the only reliable way to wire scene/component
+references right now (matches the pre-existing Known Issues entry
+below, now double confirmed on a different property).
+
+Also discovered mid-session: the original Step 2 scene only has ONE
+SeedPickup per core type (Growth/Heat/Wind), but every graft consumes
+2 cores and each core type feeds 2 of the 3 recipes -- so crafting all
+3 weapons needs 6 cores = 6 seeds, impossible with only 3 seed pickups
+in the world. Fixed by duplicating each SeedPickup once via RunCommand
+(Object.Instantiate of the existing GameObject, which preserves its
+wired SeedData reference) -- scene now has 6 SeedPickups total (2 per
+type) under -- PICKUPS --, named with a _02 suffix, offset a few units
+from the originals. Rock uses were already sufficient (3 rocks x 3
+uses = 9 available, only 6 needed) so nothing added there.
+
+Step 5 test plan for next session (nothing below this has been run
+yet): press I to see seed/sap/weapon debug summary; collect all 6
+seeds; break each into a core via R (6 times); graft Thornblaze
+(Growth+Heat), Windbriar (Growth+Wind), Cindergale (Heat+Wind) once
+each via Tab -- this exactly uses the 6 cores and fills all 3 slots
+with 3 different weapons, no need to graft any recipe twice; confirm
+each graft goes straight into a slot (no cube spawns since slots
+aren't full yet); press 1/2/3 to switch equipped weapon and confirm
+attack range/cooldown actually changes per weapon; swing (left click)
+near Test_MeleeTarget and confirm the hit flashes white and the camera
+shakes briefly; graft a 4th weapon (needs 2 more cores of some type --
+none available with the current seed count, so this specific overflow
+test may need one more seed pickup added first -- flag to the user if
+reached) to confirm it spawns as a WeaponPickup on the ground instead
+of entering inventory; walk up to it and press E to confirm pickup
+only succeeds once a slot is free; stand near both a matured plot and
+a dropped weapon at different distances and press E to confirm only
+the closer one responds; confirm bare fists return when no weapon is
+equipped.
 
 ## Last Session
 2026-07-18/19 — Built and confirmed working Step 4b (GraftMenuUI). Hit
@@ -296,6 +379,16 @@ TryHarvest/sapYield/HasMatured). This landed as uncommitted working-
 tree changes from a prior context window; picked back up this session
 via `git status`/`git diff` rather than session memory, committed, and
 pushed. Confirmed working by the user via Play-mode test.
+
+2026-07-19/20 -- Built all of Step 5 (weapon pickup/equip/swing) end
+to end: code, MCP scene wiring, zero-compile-error confirmation, and a
+scene content fix (duplicated seed pickups so 3 weapons are actually
+craftable). Full detail is in the STEP 5 paragraph under Current
+State above. Session ended before Play-testing -- that's the very
+next thing to do. Everything is committed (see git log), nothing left
+uncommitted.
+
+## Known issues / TODO
 - If a newly-written script's type can't be resolved (CS0246 in a file
   that references it, even though the referenced file itself shows no
   error), don't just keep re-importing it — check whether it's actually

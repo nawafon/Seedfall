@@ -9,12 +9,17 @@ namespace Seedfall.Weapons
     public class GraftTestDebug : MonoBehaviour
     {
         public PlayerSeedInventory playerInventory;
+        public WeaponInventory weaponInventory;
 
         private void Update()
         {
             if (Input.GetKeyDown(KeyCode.I))
             {
                 Debug.Log(playerInventory.GetDebugSummary());
+                if (weaponInventory != null)
+                {
+                    Debug.Log(weaponInventory.GetDebugSummary());
+                }
             }
         }
     }

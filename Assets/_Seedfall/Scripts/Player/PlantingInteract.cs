@@ -3,13 +3,13 @@ using Seedfall.Plants;
 
 namespace Seedfall.Player
 {
-    // Lets the player press a key near a plot to harvest a matured plot (priority) or
-    // plant the first available seed from their inventory into an empty one.
+    // Plot interaction logic (harvest-priority-over-plant). The E-keypress itself now
+    // lives in PlayerInteract, which arbitrates between this and weapon pickups by
+    // distance and calls TryInteractWithNearbyPlot() when a plot wins.
     [RequireComponent(typeof(PlayerSeedInventory))]
     public class PlantingInteract : MonoBehaviour
     {
         [SerializeField] private float interactRange = 2.5f;
-        [SerializeField] private KeyCode interactKey = KeyCode.E;
 
         private PlayerSeedInventory _inventory;
 
@@ -18,15 +18,7 @@ namespace Seedfall.Player
             _inventory = GetComponent<PlayerSeedInventory>();
         }
 
-        private void Update()
-        {
-            if (Input.GetKeyDown(interactKey))
-            {
-                TryPlantNearby();
-            }
-        }
-
-        private void TryPlantNearby()
+        public bool TryInteractWithNearbyPlot()
         {
             Collider[] nearby = Physics.OverlapSphere(transform.position, interactRange);
 
@@ -37,13 +29,13 @@ namespace Seedfall.Player
                 if (plot != null && plot.IsOccupied && plot.HasMatured)
                 {
                     plot.TryHarvest(_inventory);
-                    return;
+                    return true;
                 }
             }
 
             if (_inventory.Seeds.Count == 0)
             {
-                return;
+                return false;
             }
 
             SeedData seedToPlant = _inventory.Seeds[0];
@@ -54,9 +46,11 @@ namespace Seedfall.Player
                 if (plot != null && !plot.IsOccupied)
                 {
                     plot.TryPlant(seedToPlant, _inventory);
-                    return;
+                    return true;
                 }
             }
+
+            return false;
         }
     }
 }

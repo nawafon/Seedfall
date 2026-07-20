@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 namespace Seedfall.Player
@@ -16,6 +17,34 @@ namespace Seedfall.Player
 
         private float _yaw;
         private float _pitch = 25f;
+
+        // Small positional jitter added on top of the computed orbit position, folded in
+        // right where that position is assigned below -- avoids any script-execution-order
+        // race, since nothing outside LateUpdate ever writes to transform directly here.
+        private Vector3 _shakeOffset = Vector3.zero;
+        private Coroutine _shakeCoroutine;
+
+        public void Shake(float duration, float magnitude)
+        {
+            if (_shakeCoroutine != null)
+            {
+                StopCoroutine(_shakeCoroutine);
+            }
+            _shakeCoroutine = StartCoroutine(ShakeRoutine(duration, magnitude));
+        }
+
+        private IEnumerator ShakeRoutine(float duration, float magnitude)
+        {
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                _shakeOffset = Random.insideUnitSphere * magnitude;
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+            _shakeOffset = Vector3.zero;
+            _shakeCoroutine = null;
+        }
 
         private void Start()
         {
@@ -57,7 +86,7 @@ namespace Seedfall.Player
             Vector3 focusPoint = target.position + Vector3.up * targetHeight;
             Vector3 desiredPosition = focusPoint - rotation * Vector3.forward * distance;
 
-            transform.position = desiredPosition;
+            transform.position = desiredPosition + _shakeOffset;
             transform.rotation = rotation;
         }
     }
