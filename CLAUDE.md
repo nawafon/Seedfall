@@ -127,8 +127,7 @@ CLEANUP DISCIPLINE:
 - [x] 2. SeedCore data (Growth/Heat/Wind) + findable seed pickups in world
 - [x] 3. Planting in a small plot area (limited plot count, not scarcity)
 - [x] 4. Grafting system → produces a weapon (not just a seed/plant)
-- [ ] 5. Weapon pickup, equip, and swing (replacing bare hands) -- code +
-      scene wiring done, NOT yet Play-tested (see Current State)
+- [x] 5. Weapon pickup, equip, and swing (replacing bare hands)
 - [ ] 6. Expedition structure: leave plot area, weapon active in a test 
       arena, weapon wilts at expedition end and drops seeds
 - [ ] 7. Dumb simple enemies in the test arena to fight (or heal, small 
@@ -336,6 +335,44 @@ only succeeds once a slot is free; stand near both a matured plot and
 a dropped weapon at different distances and press E to confirm only
 the closer one responds; confirm bare fists return when no weapon is
 equipped.
+
+## Session Notes Addendum 2 (2026-07-30)
+Planting/harvest choice rework, confirmed working by user. PlantPlot.cs:
+added seedYield (int, default 2, auto-defaulted correctly on the 3
+existing scene plots with no MCP write needed). Split the old single
+TryHarvest into TryHarvestForSeeds (returns seedYield SeedData of the
+planted type to inventory -- plant 1, get 2 back) and TryHarvestForSap
+(unchanged sap behavior), both routing through a new private ClearPlot()
+helper (byte-identical reset logic, deduplicated). PlantingInteract.cs:
+E path (TryInteractWithNearbyPlot) now calls TryHarvestForSeeds; added
+TryHarvestNearbyPlotForSap() for the new F path (same nearby-scan
+pattern, no planting fallback). PlayerInteract.cs: added a
+[SerializeField] sapHarvestKey (KeyCode.F) checked independently in
+Update(), calling _plantingInteract.TryHarvestNearbyPlotForSap()
+directly -- does NOT go through the closest-plot-vs-weapon arbitration
+(F has no weapon meaning), and that arbitration logic itself was left
+byte-identical. No new scene wiring needed. Growth: plant seed (1
+consumed) -> mature -> E harvests to 2 seeds of that type (net +1) OR F
+harvests to 1 sap (old behavior) -> plot empties either way. This is
+the "grow seed supply vs. grow the World Tree" tension the design
+intends. Also hit a red herring during this session: a Console
+"Assertion failed on expression: 'ValidTRS()'" spam traced (via
+stacktrace) to Unity MCP's OWN get_components serializer walking
+Transform.lossyScale/rotation via Matrix4x4 -- not from game code, not
+from Play mode, not a sign of a broken transform (the transforms
+involved were confirmed scale 1,1,1). Known spurious Unity engine
+assertion in that internal check; safe to ignore if seen again.
+
+## Session Notes Addendum (2026-07-30)
+Step 5 Play-tested and confirmed working functionally (weapon pickup,
+equip via 1/2/3, swing, hit flash, camera shake, slot-full ->
+ground-drop, E-priority between plot/weapon, bare-fist fallback --
+the full test plan listed in Step 5's note above). User's verdict:
+"good not great" -- functionally correct but the feel/juice (hit
+feedback, weapon differentiation, swing feel) isn't landing yet.
+Explicitly deferred, NOT a blocker -- user asked to move on to Step 6
+and revisit polish later. Do not start a feel/juice pass unprompted;
+wait until the user raises it again.
 
 ## Last Session
 2026-07-18/19 — Built and confirmed working Step 4b (GraftMenuUI). Hit

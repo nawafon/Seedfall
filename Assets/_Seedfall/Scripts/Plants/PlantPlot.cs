@@ -20,6 +20,7 @@ namespace Seedfall.Plants
         [Range(0f, 1f)]
         [SerializeField] private float stageSwitchThreshold = 0.5f;
         [SerializeField] private int sapYield = 1;
+        [SerializeField] private int seedYield = 2;
 
         private bool _isOccupied;
         private SeedData _plantedSeed;
@@ -71,7 +72,25 @@ namespace Seedfall.Plants
             return true;
         }
 
-        public bool TryHarvest(PlayerSeedInventory inventory)
+        public bool TryHarvestForSeeds(PlayerSeedInventory inventory)
+        {
+            if (!_isOccupied || !_hasMatured || inventory == null)
+            {
+                return false;
+            }
+
+            SeedData harvested = _plantedSeed;
+            for (int i = 0; i < seedYield; i++)
+            {
+                inventory.AddSeed(harvested);
+            }
+            Debug.Log($"Harvested {seedYield} {harvested.DisplayName} seeds");
+
+            ClearPlot();
+            return true;
+        }
+
+        public bool TryHarvestForSap(PlayerSeedInventory inventory)
         {
             if (!_isOccupied || !_hasMatured || inventory == null)
             {
@@ -82,14 +101,18 @@ namespace Seedfall.Plants
             inventory.AddSap(harvestedType, sapYield);
             Debug.Log($"Harvested {sapYield} {harvestedType} Sap");
 
-            // Reset plot to empty, ready to replant.
+            ClearPlot();
+            return true;
+        }
+
+        private void ClearPlot()
+        {
             _isOccupied = false;
             _plantedSeed = null;
             _growProgress = 0f;
             _hasMatured = false;
             _hasSwitchedStage = false;
             SetActiveStages(smallActive: false, grownActive: false);
-            return true;
         }
 
         private IEnumerator GrowRoutine()

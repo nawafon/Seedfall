@@ -28,7 +28,7 @@ namespace Seedfall.Player
                 PlantPlot plot = col.GetComponent<PlantPlot>();
                 if (plot != null && plot.IsOccupied && plot.HasMatured)
                 {
-                    plot.TryHarvest(_inventory);
+                    plot.TryHarvestForSeeds(_inventory);
                     return true;
                 }
             }
@@ -50,6 +50,20 @@ namespace Seedfall.Player
                 }
             }
 
+            return false;
+        }
+
+        public bool TryHarvestNearbyPlotForSap()
+        {
+            Collider[] nearby = Physics.OverlapSphere(transform.position, interactRange);
+            foreach (Collider col in nearby)
+            {
+                PlantPlot plot = col.GetComponent<PlantPlot>();
+                if (plot != null && plot.IsOccupied && plot.HasMatured)
+                {
+                    return plot.TryHarvestForSap(_inventory);
+                }
+            }
             return false;
         }
     }

@@ -16,6 +16,7 @@ namespace Seedfall.Player
     {
         [SerializeField] private float interactRange = 2.5f;
         [SerializeField] private KeyCode interactKey = KeyCode.E;
+        [SerializeField] private KeyCode sapHarvestKey = KeyCode.F;
 
         private PlantingInteract _plantingInteract;
         private PlayerSeedInventory _inventory;
@@ -33,6 +34,11 @@ namespace Seedfall.Player
             if (Input.GetKeyDown(interactKey))
             {
                 TryInteractWithClosest();
+            }
+
+            if (Input.GetKeyDown(sapHarvestKey))
+            {
+                _plantingInteract.TryHarvestNearbyPlotForSap();
             }
         }
 
