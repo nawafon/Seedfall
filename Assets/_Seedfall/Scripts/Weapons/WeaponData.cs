@@ -11,5 +11,6 @@ namespace Seedfall.Weapons
         public float attackCooldown;
         public WeaponGimmick gimmick;
         public GameObject placeholderPrefab;
+        public int maxHits = 8;
     }
 }

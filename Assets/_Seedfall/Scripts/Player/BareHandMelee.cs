@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
@@ -23,6 +24,14 @@ namespace Seedfall.Player
         [SerializeField] private MouseOrbitCamera orbitCamera;
 
         private float _lastAttackTime = -999f;
+
+        // Fired once per swing that actually lands a hit (cooldown passed AND at least
+        // one non-self collider was hit) -- never for a swing at empty air, and never
+        // more than once even if a swing overlaps multiple colliders. WeaponInventory
+        // subscribes to decrement the equipped weapon's durability -- kept as an event
+        // rather than WeaponInventory reaching in here so BareHandMelee stays ignorant
+        // of weapons/durability entirely.
+        public event Action OnHitLanded;
 
         // Cached at Awake so ResetToBareHandStats always restores the true serialized
         // defaults, even after SetStats has overwritten the active fields above.
@@ -77,6 +86,8 @@ namespace Seedfall.Player
             Vector3 attackPoint = transform.position + transform.forward * attackRange;
             Collider[] hits = Physics.OverlapSphere(attackPoint, attackRadius);
 
+            bool hitLanded = false;
+
             foreach (Collider hit in hits)
             {
                 if (hit.transform == transform)
@@ -84,7 +95,13 @@ namespace Seedfall.Player
                     continue; // don't hit ourselves
                 }
 
+                hitLanded = true;
                 OnHit(hit);
+            }
+
+            if (hitLanded)
+            {
+                OnHitLanded?.Invoke();
             }
         }
 

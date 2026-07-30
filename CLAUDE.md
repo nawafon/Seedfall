@@ -5,10 +5,11 @@ Seedfall: a Zelda-style, funky low-poly game. The player revives a dying
 world centered on a wounded World Tree. Core mechanic: grafting two 
 Seed-Cores (Growth/Heat/Wind to start) grows a WEAPON, which the player 
 harvests and takes on an EXPEDITION into a dangerous sector. The weapon 
-wilts at the end of the expedition (not mid-combat, not from per-swing 
-durability) and drops seeds back — sometimes mutated/improved. This 
-closes the resource loop: grow → expedition → wilt → seeds return → 
-grow again.
+wilts from per-instance durability that decrements on each LANDED HIT 
+(not every swing, not a timer) — at 0 remaining hits it wilts mid-
+combat and reverts to bare fists. At MVP no seed drops on wilt (seed 
+drops from enemies are Step 7 scope). This closes the resource loop: 
+grow → expedition → wilt → seeds return → grow again.
 
 The player starts with NOTHING but bare-hand melee combat — no starting 
 gift, no menu handout. The first Seed-Cores are found by exploring the 
@@ -128,7 +129,7 @@ CLEANUP DISCIPLINE:
 - [x] 3. Planting in a small plot area (limited plot count, not scarcity)
 - [x] 4. Grafting system → produces a weapon (not just a seed/plant)
 - [x] 5. Weapon pickup, equip, and swing (replacing bare hands)
-- [ ] 6. Expedition structure: leave plot area, weapon active in a test 
+- [x] 6. Expedition structure: leave plot area, weapon active in a test 
       arena, weapon wilts at expedition end and drops seeds
 - [ ] 7. Dumb simple enemies in the test arena to fight (or heal, small 
       chance of seed drop)
@@ -335,6 +336,45 @@ only succeeds once a slot is free; stand near both a matured plot and
 a dropped weapon at different distances and press E to confirm only
 the closer one responds; confirm bare fists return when no weapon is
 equipped.
+
+STEP 6 (expedition structure + weapon wilt), done, compiled, scene-
+wired via MCP, and confirmed working by the user via Play-mode test.
+Design lock: same-scene arena (not a separate scene) reached via an
+ExpeditionPortal trigger that repositions the player -- no actual
+"expedition state" is tracked, portal is cosmetic for this isolation
+test. Weapon wilt is per-instance durability on a plain C# wrapper
+Assets/_Seedfall/Scripts/Weapons/EquippedWeapon.cs (Data + RemainingHits,
+DecrementAndCheckWilt()) -- NOT on the shared WeaponData asset, since
+every copy of e.g. Thornblaze would otherwise share one counter.
+WeaponInventory's 3 slots now hold EquippedWeapon, not WeaponData
+directly. Durability decrements on a LANDED HIT ONLY (not every swing,
+not a timer) -- BareHandMelee.cs gained an OnHitLanded event, fired
+once per swing that connects with at least one collider (never for a
+swing at empty air, never more than once even with multiple colliders
+hit); WeaponInventory subscribes and calls DecrementAndCheckWilt(). At
+0 remaining hits the weapon wilts: slot nulled, reverts to bare fists
+if it was equipped, no seed drop (seed drops are Step 7/enemy scope).
+WeaponData gained maxHits (int, default 8, all 3 existing assets set to
+5 for testing). New Assets/_Seedfall/Scripts/World/ExpeditionPortal.cs:
+trigger collider + serialized destination Transform, teleports any
+GameObject with a CharacterController (disables it for the position
+write, since CharacterController fights direct transform writes
+otherwise, then re-enables).
+
+Scene wiring done via MCP: new "-- ARENA --" root at x=50 (far from the
+plot area, which is centered near the origin) with Arena_Floor (Plane,
+scale 2 => 20x20), ArenaSpawnPoint (50,1,-6, facing +z),
+Test_DurabilityDummy (solid cube, needed because hit-only durability
+can't demonstrate wilt in an empty arena), and Portal_ToPlotArea
+(trigger cube, dest=PlotAreaReturnPoint). In "-- WORLD --":
+PlotAreaReturnPoint (0,1,-4) and Portal_ToArena (trigger cube,
+dest=ArenaSpawnPoint). Destinations wired via RunCommand +
+SerializedObject.objectReferenceValue (set_component_property doesn't
+reliably assign scene-object references, per Known Issues below).
+Confirmed working end to end: walk into Portal_ToArena -> teleport to
+arena; equip a weapon and hit Test_DurabilityDummy -> console logs
+remaining hits counting down, 5th landed hit wilts the weapon and
+reverts to bare fists; walk into Portal_ToPlotArea -> teleport back.
 
 ## Session Notes Addendum 2 (2026-07-30)
 Planting/harvest choice rework, confirmed working by user. PlantPlot.cs:
