@@ -11,6 +11,7 @@ namespace Seedfall.World
     public class ExpeditionPortal : MonoBehaviour
     {
         [SerializeField] private Transform destination;
+        [SerializeField] private bool entersExpedition;
 
         private void Reset()
         {
@@ -43,6 +44,15 @@ namespace Seedfall.World
             controller.enabled = true;
 
             Debug.Log($"Portal: teleported to {destination.name}");
+
+            if (ExpeditionManager.Instance != null)
+            {
+                ExpeditionManager.Instance.SetOnExpedition(entersExpedition);
+            }
+            else
+            {
+                Debug.LogWarning("ExpeditionPortal: no ExpeditionManager in scene -- expedition state not updated.");
+            }
         }
     }
 }

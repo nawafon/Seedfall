@@ -10,6 +10,7 @@ namespace Seedfall.Weapons
     {
         public PlayerSeedInventory playerInventory;
         public WeaponInventory weaponInventory;
+        public PlayerHealth playerHealth;
 
         private void Update()
         {
@@ -19,6 +20,10 @@ namespace Seedfall.Weapons
                 if (weaponInventory != null)
                 {
                     Debug.Log(weaponInventory.GetDebugSummary());
+                }
+                if (playerHealth != null)
+                {
+                    Debug.Log($"HP: {playerHealth.CurrentHealth}/{playerHealth.MaxHealth}");
                 }
             }
         }

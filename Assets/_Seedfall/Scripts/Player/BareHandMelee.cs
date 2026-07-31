@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using Seedfall.Enemies;
 
 namespace Seedfall.Player
 {
@@ -16,14 +17,30 @@ namespace Seedfall.Player
         [SerializeField] private float attackRange = 1.0f;    // distance in front of the player the hit check is centered on
         [SerializeField] private float attackRadius = 0.5f;   // radius of the hit-check sphere
         [SerializeField] private float attackCooldown = 0.5f; // seconds required between swings
+        [SerializeField] private float attackDamage = 5f;     // damage dealt to EnemyHealth on a landed hit
 
         [Header("Hit feedback (juice only, no damage system yet)")]
         [SerializeField] private float hitFlashDuration = 0.1f;
+        [SerializeField] private Color hitFlashColor = Color.white; // bare-hand default; weapons override via SetStats
         [SerializeField] private float shakeDuration = 0.1f;
-        [SerializeField] private float shakeMagnitude = 0.08f;
+        [SerializeField] private float shakeMagnitude = 0.15f;
+        [SerializeField] private float shakeDamageReference = 5f; // damage shakeMagnitude above is tuned for (bare-hand damage) -- heavier weapons shake proportionally more
         [SerializeField] private MouseOrbitCamera orbitCamera;
 
+        [Header("Hit-stop (freeze frame)")]
+        [SerializeField] private float hitStopMinDuration = 0.06f; // real-time seconds, low damage
+        [SerializeField] private float hitStopMaxDuration = 0.14f; // real-time seconds, at/above hitStopHeavyDamageThreshold
+        [SerializeField] private float hitStopTimeScale = 0.05f;
+        [SerializeField] private float hitStopHeavyDamageThreshold = 20f;
+
         private float _lastAttackTime = -999f;
+        private Coroutine _hitStopCoroutine;
+
+        // Current melee range/radius, read by AttackRangeIndicator to draw a live ground
+        // ring and hit-zone marker -- stays accurate across weapon equip/wilt since these
+        // read the same fields SetStats and ResetToBareHandStats both write.
+        public float AttackRange => attackRange;
+        public float AttackRadius => attackRadius;
 
         // Fired once per swing that actually lands a hit (cooldown passed AND at least
         // one non-self collider was hit) -- never for a swing at empty air, and never
@@ -38,19 +55,25 @@ namespace Seedfall.Player
         private float _bareHandRange;
         private float _bareHandRadius;
         private float _bareHandCooldown;
+        private float _bareHandDamage;
+        private Color _bareHandFlashColor;
 
         private void Awake()
         {
             _bareHandRange = attackRange;
             _bareHandRadius = attackRadius;
             _bareHandCooldown = attackCooldown;
+            _bareHandDamage = attackDamage;
+            _bareHandFlashColor = hitFlashColor;
         }
 
-        public void SetStats(float range, float radius, float cooldown)
+        public void SetStats(float range, float radius, float cooldown, float damage, Color flashColor)
         {
             attackRange = range;
             attackRadius = radius;
             attackCooldown = cooldown;
+            attackDamage = damage;
+            hitFlashColor = flashColor;
         }
 
         public void ResetToBareHandStats()
@@ -58,6 +81,8 @@ namespace Seedfall.Player
             attackRange = _bareHandRange;
             attackRadius = _bareHandRadius;
             attackCooldown = _bareHandCooldown;
+            attackDamage = _bareHandDamage;
+            hitFlashColor = _bareHandFlashColor;
         }
 
         private void Update()
@@ -101,6 +126,7 @@ namespace Seedfall.Player
 
             if (hitLanded)
             {
+                ApplyHitFeedback();
                 OnHitLanded?.Invoke();
             }
         }
@@ -109,16 +135,48 @@ namespace Seedfall.Player
         {
             Debug.Log($"BareHandMelee hit: {hit.name}");
 
+            EnemyHealth enemyHealth = hit.GetComponent<EnemyHealth>();
+            if (enemyHealth != null)
+            {
+                enemyHealth.TakeDamage(attackDamage);
+            }
+
             Renderer renderer = hit.GetComponent<Renderer>();
             if (renderer != null)
             {
                 StartCoroutine(FlashRoutine(renderer));
             }
+        }
 
+        // Fires once per landed SWING (not once per collider hit) so a cleave connecting
+        // with multiple targets doesn't stack shake/hit-stop -- both scale with the current
+        // weapon's damage so heavier weapons read as heavier hits.
+        private void ApplyHitFeedback()
+        {
             if (orbitCamera != null)
             {
-                orbitCamera.Shake(shakeDuration, shakeMagnitude);
+                float magnitude = shakeMagnitude * Mathf.Max(1f, attackDamage / shakeDamageReference);
+                orbitCamera.Shake(shakeDuration, magnitude);
             }
+
+            if (_hitStopCoroutine != null)
+            {
+                StopCoroutine(_hitStopCoroutine);
+            }
+            _hitStopCoroutine = StartCoroutine(HitStopRoutine());
+        }
+
+        // Uses WaitForSecondsRealtime (unscaled) so the freeze actually resumes -- a
+        // scaled wait would never elapse while Time.timeScale itself is near zero.
+        private IEnumerator HitStopRoutine()
+        {
+            float t = Mathf.Clamp01(attackDamage / hitStopHeavyDamageThreshold);
+            float duration = Mathf.Lerp(hitStopMinDuration, hitStopMaxDuration, t);
+
+            Time.timeScale = hitStopTimeScale;
+            yield return new WaitForSecondsRealtime(duration);
+            Time.timeScale = 1f;
+            _hitStopCoroutine = null;
         }
 
         // Mirrors the _BaseColor/_Color property check already used by
@@ -144,7 +202,7 @@ namespace Seedfall.Player
                 float t = elapsed < halfDuration
                     ? elapsed / halfDuration
                     : 1f - (elapsed - halfDuration) / halfDuration;
-                mat.SetColor(colorProperty, Color.Lerp(original, Color.white, t));
+                mat.SetColor(colorProperty, Color.Lerp(original, hitFlashColor, t));
                 yield return null;
             }
 

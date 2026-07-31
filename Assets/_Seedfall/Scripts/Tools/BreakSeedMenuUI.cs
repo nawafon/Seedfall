@@ -4,6 +4,8 @@ using UnityEngine.UI;
 using TMPro;
 using Seedfall.Plants;
 using Seedfall.Player;
+using Seedfall.World;
+using Seedfall.Weapons;
 
 namespace Seedfall.Tools
 {
@@ -21,6 +23,11 @@ namespace Seedfall.Tools
         public SeedCoreData coreGrowth;
         public SeedCoreData coreHeat;
         public SeedCoreData coreWind;
+
+        // Cross-reference used ONLY to check the other menu's real open state -- NOT
+        // Cursor.lockState (see the matching comment in GraftMenuUI for why that was
+        // unreliable).
+        public GraftMenuUI graftMenu;
 
         private static readonly SeedCoreType[] DropdownOrder =
         {
@@ -58,10 +65,17 @@ namespace Seedfall.Tools
 
         public void Open()
         {
-            // If some OTHER menu is open (cursor already unlocked), don't also open this
-            // one on top of it -- only one menu at a time.
-            if (Cursor.lockState != CursorLockMode.Locked)
+            // If the OTHER menu is genuinely open, don't also open this one on top of it --
+            // checked directly rather than via Cursor.lockState (see field comment).
+            if (graftMenu != null && graftMenu.IsOpen)
             {
+                return;
+            }
+
+            // Breaking seeds is home-only -- can't prep/craft mid-expedition.
+            if (ExpeditionManager.Instance != null && ExpeditionManager.Instance.IsOnExpedition)
+            {
+                Debug.Log("Can't break seeds while on an expedition -- head back home first.");
                 return;
             }
 

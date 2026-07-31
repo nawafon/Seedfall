@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using Seedfall.Weapons;
 
@@ -23,6 +24,14 @@ namespace Seedfall.Player
 
         public WeaponData GetEquipped() => _equippedIndex >= 0 ? slots[_equippedIndex]?.Data : null;
         public int EquippedIndex => _equippedIndex;
+        public int GetEquippedRemainingHits() => _equippedIndex >= 0 ? slots[_equippedIndex]?.RemainingHits ?? 0 : 0;
+
+        // PlayerHUD subscribes to these instead of polling every frame. OnEquipChanged
+        // fires whenever the equipped slot changes (EquipSlot, or a wilt reverting to bare
+        // fists); OnDurabilityChanged fires whenever the equipped weapon's remaining hits
+        // changes, including the initial value right after equipping.
+        public event Action<WeaponData> OnEquipChanged;
+        public event Action<int> OnDurabilityChanged;
 
         private void Awake()
         {
@@ -68,11 +77,31 @@ namespace Seedfall.Player
 
             if (weapon != null)
             {
-                _meleeAttacker.SetStats(weapon.Data.range, WeaponAttackRadius, weapon.Data.attackCooldown);
+                _meleeAttacker.SetStats(weapon.Data.range, WeaponAttackRadius, weapon.Data.attackCooldown, weapon.Data.damage, GetFlashColor(weapon.Data.gimmick));
             }
             else
             {
                 _meleeAttacker.ResetToBareHandStats();
+            }
+
+            OnEquipChanged?.Invoke(weapon?.Data);
+            OnDurabilityChanged?.Invoke(weapon?.RemainingHits ?? 0);
+        }
+
+        // Distinct hit-flash color per gimmick so the three weapons read differently on
+        // impact, independent of which specific weapon has which gimmick.
+        private static Color GetFlashColor(WeaponGimmick gimmick)
+        {
+            switch (gimmick)
+            {
+                case WeaponGimmick.Burn:
+                    return new Color(1f, 0.45f, 0.1f); // orange -- fire
+                case WeaponGimmick.Knockback:
+                    return new Color(0.3f, 0.75f, 1f); // cyan -- force/wind
+                case WeaponGimmick.AoE:
+                    return new Color(0.85f, 0.3f, 1f); // magenta -- burst
+                default:
+                    return Color.white;
             }
         }
 
@@ -96,6 +125,12 @@ namespace Seedfall.Player
                 Debug.Log($"{weapon.Data.weaponName} wilted.");
                 slots[_equippedIndex] = null;
                 _meleeAttacker.ResetToBareHandStats();
+                OnEquipChanged?.Invoke(null);
+                OnDurabilityChanged?.Invoke(0);
+            }
+            else
+            {
+                OnDurabilityChanged?.Invoke(weapon.RemainingHits);
             }
         }
 

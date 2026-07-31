@@ -11,6 +11,14 @@ namespace Seedfall.Player
         [SerializeField] private float rotationSpeed = 10f;
         [SerializeField] private float gravity = -20f;
 
+        // Caps the per-frame time step used for gravity/movement. Without this, a single
+        // frame hitch (e.g. the Editor stalling after losing OS focus) can produce a huge
+        // Time.deltaTime, which accumulates into a huge single-frame gravity step and
+        // punches CharacterController.Move() straight through thin geometry (the ground
+        // Plane's MeshCollider has zero thickness) -- confirmed as the cause of a fall-
+        // through-the-floor bug after respawn.
+        [SerializeField] private float maxDeltaTime = 0.1f;
+
         private CharacterController _controller;
         private Camera _mainCamera;
         private float _verticalVelocity;
@@ -19,6 +27,13 @@ namespace Seedfall.Player
         {
             _controller = GetComponent<CharacterController>();
             _mainCamera = Camera.main;
+        }
+
+        // Called by PlayerHealth right after a respawn teleport so no residual fall speed
+        // from before death carries into the new position.
+        public void ResetVerticalVelocity()
+        {
+            _verticalVelocity = 0f;
         }
 
         private void Update()
@@ -30,6 +45,8 @@ namespace Seedfall.Player
             {
                 return;
             }
+
+            float dt = Mathf.Min(Time.deltaTime, maxDeltaTime);
 
             float horizontal = Input.GetAxis("Horizontal");
             float vertical = Input.GetAxis("Vertical");
@@ -52,7 +69,7 @@ namespace Seedfall.Player
             if (moveDir.sqrMagnitude > 0.0001f)
             {
                 Quaternion targetRotation = Quaternion.LookRotation(moveDir, Vector3.up);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * dt);
             }
 
             // Gravity handling: keep a small downward velocity while grounded so
@@ -64,13 +81,13 @@ namespace Seedfall.Player
             }
             else
             {
-                _verticalVelocity += gravity * Time.deltaTime;
+                _verticalVelocity += gravity * dt;
             }
 
             Vector3 motion = moveDir * moveSpeed;
             motion.y = _verticalVelocity;
 
-            _controller.Move(motion * Time.deltaTime);
+            _controller.Move(motion * dt);
         }
     }
 }

@@ -1,6 +1,7 @@
 using UnityEngine;
 using Seedfall.Plants;
 using Seedfall.Weapons;
+using Seedfall.World;
 
 namespace Seedfall.Player
 {
@@ -38,14 +39,27 @@ namespace Seedfall.Player
 
             if (Input.GetKeyDown(sapHarvestKey))
             {
-                _plantingInteract.TryHarvestNearbyPlotForSap();
+                if (IsOnExpedition())
+                {
+                    Debug.Log("Can't harvest sap while on an expedition -- head back home first.");
+                }
+                else
+                {
+                    _plantingInteract.TryHarvestNearbyPlotForSap();
+                }
             }
+        }
+
+        private static bool IsOnExpedition()
+        {
+            return ExpeditionManager.Instance != null && ExpeditionManager.Instance.IsOnExpedition;
         }
 
         // Single OverlapSphere scanned for both candidate types.
         private void TryInteractWithClosest()
         {
             Collider[] nearby = Physics.OverlapSphere(transform.position, interactRange);
+            bool onExpedition = IsOnExpedition();
 
             bool hasPlotCandidate = false;
             float plotDistance = float.MaxValue;
@@ -55,21 +69,26 @@ namespace Seedfall.Player
 
             foreach (Collider col in nearby)
             {
-                PlantPlot plot = col.GetComponent<PlantPlot>();
-                if (plot != null)
+                // Farming (plant/harvest) is home-only -- weapon pickups still work in the
+                // field, so only the plot branch is gated here.
+                if (!onExpedition)
                 {
-                    bool harvestable = plot.IsOccupied && plot.HasMatured;
-                    bool plantable = !plot.IsOccupied && _inventory.Seeds.Count > 0;
-                    if (harvestable || plantable)
+                    PlantPlot plot = col.GetComponent<PlantPlot>();
+                    if (plot != null)
                     {
-                        float distance = Vector3.Distance(transform.position, col.transform.position);
-                        if (distance < plotDistance)
+                        bool harvestable = plot.IsOccupied && plot.HasMatured;
+                        bool plantable = !plot.IsOccupied && _inventory.Seeds.Count > 0;
+                        if (harvestable || plantable)
                         {
-                            plotDistance = distance;
-                            hasPlotCandidate = true;
+                            float distance = Vector3.Distance(transform.position, col.transform.position);
+                            if (distance < plotDistance)
+                            {
+                                plotDistance = distance;
+                                hasPlotCandidate = true;
+                            }
                         }
+                        continue;
                     }
-                    continue;
                 }
 
                 WeaponPickup pickup = col.GetComponent<WeaponPickup>();

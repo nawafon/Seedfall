@@ -131,7 +131,7 @@ CLEANUP DISCIPLINE:
 - [x] 5. Weapon pickup, equip, and swing (replacing bare hands)
 - [x] 6. Expedition structure: leave plot area, weapon active in a test 
       arena, weapon wilts at expedition end and drops seeds
-- [ ] 7. Dumb simple enemies in the test arena to fight (or heal, small 
+- [x] 7. Dumb simple enemies in the test arena to fight (or heal, small 
       chance of seed drop)
 - [ ] --- FUN GATE: is grow+graft+expedition+wilt actually fun? ---
 - [ ] 8. (post-MVP) Sectors, story, base depth, defense, allies
@@ -414,6 +414,118 @@ Explicitly deferred, NOT a blocker -- user asked to move on to Step 6
 and revisit polish later. Do not start a feel/juice pass unprompted;
 wait until the user raises it again.
 
+## Session Notes Addendum 3 (2026-07-31)
+Step 7 done (enemies + player health/healing), plus the deferred Step 5
+juice pass and two scope items originally slated for later: expedition
+state gating and a HUD. Confirmed working by the user via extended
+Play-mode testing.
+
+STEP 7: new Enemies/ scripts -- EnemyHealth.cs (maxHealth 30,
+healableThreshold 0.34, THE CLAMP: any hit that would drop an Active
+enemy at/below the heal threshold instead clamps HP to exactly that
+threshold and downs it, so no weapon can one-shot past the downed
+window; a hit on an already-Downed enemy kills outright, no reward),
+EnemyController.cs (chase-and-touch, contact damage, stops entirely
+once Downed). New Player/PlayerHealth.cs (maxHealth 100, TakeDamage/
+Die, respawns at PlotAreaReturnPoint using the CharacterController
+disable/move/enable pattern) and PlayerHealAction.cs (H key, heals the
+nearest Downed enemy in range -- healSeedDropChance 0.5, tuned high for
+fun-gate legibility, lower later). BareHandMelee gained attackDamage
+(bare fists 5) and applies it to EnemyHealth on hit. Enemy_Corrupted
+prefab (Capsule + kinematic Rigidbody + solid CapsuleCollider +
+EnemyHealth + EnemyController) in Prefabs/Enemies/.
+
+Also added (not in the original Step 7 scope, but needed once enemies
+existed and were hard to hit reliably): AttackRangeIndicator.cs on
+Player -- a live ground ring (max range) + facing line + hit-zone
+circle showing exactly where/how far a swing will land, tracking
+BareHandMelee.AttackRange/AttackRadius and rotation via normal
+transform-hierarchy inheritance (no per-frame recompute needed for
+facing).
+
+EXPEDITION STATE: new World/ExpeditionManager.cs (static Instance,
+IsOnExpedition, OnExpeditionStateChanged event). ExpeditionPortal
+gained entersExpedition (true on Portal_ToArena, false on
+Portal_ToPlotArea) and calls SetOnExpedition after each teleport.
+Farming/crafting is now home-only: GraftMenuUI and BreakSeedMenuUI
+refuse to open while on expedition (logged), PlayerInteract's E-plot
+and F-sap paths are gated the same way -- weapon pickup via E still
+works in the field. Weapon wilt stays hit-only; expedition state never
+triggers it.
+
+HUD: new UI/PlayerHUD.cs on the existing GraftMenu Canvas (reused
+rather than a second Canvas/EventSystem) -- HP bar bottom-left,
+equipped-weapon-and-durability readout bottom-left, "ON EXPEDITION"
+label top-center. Fully event-driven: PlayerHealth.OnHealthChanged/
+OnDamaged, WeaponInventory.OnEquipChanged/OnDurabilityChanged (+
+GetEquippedRemainingHits()), ExpeditionManager.OnExpeditionStateChanged
+-- HUD reads initial state directly at Start() rather than waiting for
+the first event so it's never stale on load.
+
+JUICE PASS (the deferred Step 5 "good not great"): hit-stop (brief
+Time.timeScale drop via WaitForSecondsRealtime, scaled 0.06-0.14s real
+time by damage -- tuned up from an initial 0.04-0.08s that felt like no
+change at all on bare fists, see bug note below), damage-scaled camera
+shake (magnitude scales off attackDamage vs. bare-hand damage as the
+reference point; consolidated to fire once per landed SWING rather
+than once per collider hit, so a multi-target cleave doesn't stack
+juice), enemy knockback on every damaging hit (eased shove away from
+the player; EnemyController.SetKnockedBack pauses its own chase-write
+for the same window so they don't fight over transform.position),
+enemy death/heal "pop" (flash + ease-in shrink to zero over 0.12s
+instead of an instant Destroy -- different flash color for kill vs.
+heal), player hurt feedback (PlayerHealth.OnDamaged drives a red HUD
+edge-flash overlay + a small camera shake), and per-gimmick hit-flash
+colors (Burn=orange, Knockback=cyan, AoE=magenta, None/bare
+fists=white) via an extended BareHandMelee.SetStats(..., flashColor).
+No audio system exists yet -- flagged to the user as the single
+biggest remaining feel lever, intentionally not built this session.
+
+ENEMY RESPAWNING: the 3 one-time Enemy_Corrupted_01/02/03 were
+replaced with EnemySpawnPoint_01/02/03 (new Enemies/EnemySpawnPoint.cs)
+at the same 3 positions/seed-drop types -- each respawns a fresh enemy
+2s (down from an initial 18s, per user request) after the current one
+is killed or healed, so the arena stays playable indefinitely instead
+of going empty after 3 kills. EnemyHealth gained a public SetSeedDrop()
+so the spawner can configure each fresh instance without Editor-only
+SerializedObject access.
+
+BUGS FOUND AND FIXED this session (all via live Play-mode diagnosis --
+see Known Issues below for the general techniques used):
+1. Menu-open mutual exclusion (GraftMenuUI/BreakSeedMenuUI) was keyed
+   off Cursor.lockState != Locked as a proxy for "another menu is
+   open" -- but the OS auto-unlocks the cursor whenever the Editor
+   window loses focus (e.g. alt-tabbing to read chat), which
+   permanently blocked BOTH menus from ever reopening even though
+   neither was actually open. Fixed by having each menu check the
+   OTHER's real IsOpen state directly (new cross-references,
+   GraftMenuUI.breakSeedMenu / BreakSeedMenuUI.graftMenu), plus a
+   GraftMenuUI.OnApplicationFocus self-heal that re-locks the cursor
+   on refocus if neither menu is actually open.
+2. Player could fall through the ground plane after respawning (ended
+   up at Y=-15). Root cause: the ground Plane's MeshCollider has zero
+   thickness, and PlayerController's gravity/movement used raw
+   Time.deltaTime -- a frame hitch (confirmed: Time.frameCount doesn't
+   advance at all while the Editor is unfocused, e.g. during MCP tool
+   calls) can produce one huge deltaTime spike, accumulate a huge
+   single-frame gravity step, and punch CharacterController.Move()
+   straight through the thin collider. Fixed with a maxDeltaTime clamp
+   (0.1s) in PlayerController plus a new ResetVerticalVelocity(),
+   called by PlayerHealth.Die() after the respawn teleport so no
+   residual fall speed carries over.
+3. HUD HP bar never visually moved despite PlayerHealth.TakeDamage
+   firing correctly (confirmed via console logs). Root cause:
+   HUD_HealthBarFill's Image.sprite was null -- Unity's Image
+   component silently ignores fillAmount/type=Filled entirely without
+   a sprite assigned (falls back to rendering a static full rect).
+   Fixed by assigning the built-in AssetDatabase.GetBuiltinExtraResource
+   <Sprite>("UI/Skin/UISprite.psd"). Worth checking any FUTURE Filled-
+   type Image the same way -- this is a general Unity UGUI gotcha, not
+   specific to this one bar.
+4. GraftMenuPanel was found stuck active=true in the saved scene
+   (leftover from earlier setup) -- fixed to default closed like
+   BreakSeedMenuPanel.
+
 ## Last Session
 2026-07-18/19 — Built and confirmed working Step 4b (GraftMenuUI). Hit
 two usability bugs, both fixed: cursor never unlocked on menu open
@@ -466,6 +578,29 @@ next thing to do. Everything is committed (see git log), nothing left
 uncommitted.
 
 ## Known issues / TODO
+- Unity's Editor Play-mode loop does not appear to advance at all while
+  the Editor window lacks OS focus -- confirmed by reading Time.frameCount
+  twice across a real multi-second gap (identical both times) while
+  interacting via MCP tool calls with the window unfocused. This means
+  (a) any live diagnostic via RunCommand that expects a coroutine/Update
+  to progress between separate tool calls will see nothing happen until
+  focus returns, and (b) more importantly, a real gameplay bug can hide
+  behind this: Cursor.lockState gets auto-unlocked by the OS on focus
+  loss, and nothing was re-locking it on refocus, which broke menu
+  opening. Any "is a menu/UI open" check should verify the real UI state
+  directly, not infer it from Cursor.lockState -- see GraftMenuUI/
+  BreakSeedMenuUI's cross-reference IsOpen checks for the pattern now
+  used. When a frame hitch is unavoidable (e.g. after this kind of
+  unfocus), also clamp any Time.deltaTime-scaled physics/movement code
+  (see PlayerController.maxDeltaTime) so a huge single-frame step can't
+  tunnel a CharacterController through thin collider geometry.
+- A UI Image with `type = Filled` (health bars, progress bars, etc.)
+  silently ignores `fillAmount` entirely if `sprite` is null -- it just
+  renders a static full rect. Always assign a sprite when building a
+  Filled-type Image via MCP (e.g.
+  `AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd")`
+  for a plain solid-color bar) and don't assume "GameObject > UI >
+  Image" auto-assigns one -- confirmed it did not in this project.
 - If a newly-written script's type can't be resolved (CS0246 in a file
   that references it, even though the referenced file itself shows no
   error), don't just keep re-importing it — check whether it's actually
